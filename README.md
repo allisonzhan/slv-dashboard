@@ -12,23 +12,33 @@ Two pieces share one data pipeline:
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Windows (macOS/Linux: source .venv/bin/activate)
-pip install -r requirements.txt
-copy .env.example .env          # then add your FRED API key to .env
+pip install -r requirements-dev.txt
+python -m slv_dashboard.refresh   # pull all sources into data/cache/
 streamlit run app.py
+pytest                            # offline parser tests
 ```
 
-Get a free FRED API key at https://fred.stlouisfed.org/docs/api/api_key.html. Never commit `.env`.
+A FRED API key is optional (the keyless CSV endpoint is used otherwise). If you want one, copy `.env.example` to `.env` and add it. Never commit `.env`.
 
 ## Data sources (v1, all free)
 
-| Series | Source |
-|---|---|
-| Silver, gold, copper futures | yfinance (`SI=F`, `GC=F`, `HG=F`) |
-| 10Y real yield, broad dollar index | FRED (`DFII10`, `DTWEXBGS`) |
-| Positioning | CFTC Commitments of Traders |
-| Registered / eligible stocks | CME daily silver stocks report |
-| ETF holdings | Issuer daily holdings |
-| Shanghai premium | v2 |
+| Series | Source | History |
+|---|---|---|
+| Silver, gold, copper futures | yfinance (`SI=F`, `GC=F`, `HG=F`) | 2010 on |
+| 10Y real yield, broad dollar index | FRED (`DFII10`, `DTWEXBGS`) | 2010 on |
+| Positioning | CFTC disaggregated COT, COMEX silver | 2010 on, weekly |
+| SLV ounces in trust | iShares product page | Today only; builds up with each daily refresh |
+| Registered / eligible stocks | CME daily silver stocks report | Manual import, see below |
+| Shanghai premium | v2 | |
+
+**Notes**
+- COT positions are as of Tuesday but released Friday. The dataset lags them 3 days so models never see data before it was public.
+- yfinance `=F` tickers are continuous front-month series, so roll dates can show small artificial jumps.
+
+**COMEX stocks (manual import).** CME blocks automated downloads. Save
+https://www.cmegroup.com/delivery_reports/Silver_stocks.xls from your browser into `data/imports/`
+(any name starting with `Silver_stocks`, e.g. `Silver_stocks_2026-10-20.xls`) and run the refresh.
+Each file is one day.
 
 ## Layout
 
@@ -36,16 +46,19 @@ Get a free FRED API key at https://fred.stlouisfed.org/docs/api/api_key.html. Ne
 app.py                  Streamlit entry point
 slv_dashboard/
   config.py             Series definitions and settings
-  data/                 Loaders (one module per source)
+  refresh.py            Pull every source into the cache
+  data/                 Loaders (one module per source) and dataset.py (aligned daily frame)
   models/               Regressions and regime detection
 data/cache/             Local data cache (git-ignored)
+data/imports/           Hand-downloaded files, e.g. CME reports (git-ignored)
 notebooks/              Research notebooks
+tests/                  Offline tests
 ```
 
 ## Roadmap
 
 - [x] Project skeleton
-- [ ] Phase 1: data loaders and aligned dataset
+- [x] Phase 1: data loaders and aligned dataset (COMEX parser waits on a real CME file to verify)
 - [ ] Phase 2: rolling driver regressions and regime detection
 - [ ] Phase 3: dashboard panels and alerts
 - [ ] Phase 4: daily refresh and hosting
