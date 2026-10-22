@@ -9,10 +9,7 @@ st.set_page_config(page_title="SLV Dashboard", layout="wide")
 st.title("Silver Dashboard")
 st.caption("COINS metals division")
 
-if not config.FRED_API_KEY:
-    st.warning("FRED_API_KEY is not set. Copy .env.example to .env and add your key.")
-
-st.info("Panels arrive in Phase 3 once the data loaders are in place.")
+st.info("Panels arrive in Phase 3. Run `python -m slv_dashboard.refresh` to pull data.")
 
 PLANNED_PANELS = [
     "Silver price and gold/silver ratio",
