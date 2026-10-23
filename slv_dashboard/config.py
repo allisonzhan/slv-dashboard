@@ -34,8 +34,14 @@ CFTC_SILVER_CODE = "084691"
 # iShares Silver Trust product page (current ounces in trust)
 SLV_PRODUCT_URL = "https://www.ishares.com/us/products/239855/ishares-silver-trust-fund"
 
-# Rolling windows (trading days) for the driver regressions
-REGRESSION_WINDOWS = [60, 252]
+# Driver regressions run on weekly (Friday) returns: COMEX settles at 1:30pm ET
+# while FRED's yield and dollar series are stamped at other times of day, so
+# daily betas would be biased toward zero by the timing mismatch.
+REGRESSION_WINDOWS_WEEKS = [26, 52]
+
+# Regime rule: copper's share of explanatory power is ranked against earlier
+# windows; this many weeks of windows must exist before labels start.
+REGIME_MIN_HISTORY_WEEKS = 104
 
 HISTORY_START = "2010-01-01"
 
