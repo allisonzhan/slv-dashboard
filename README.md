@@ -71,5 +71,5 @@ tests/                  Offline tests
 - [x] Project skeleton
 - [x] Phase 1: data loaders and aligned dataset (COMEX parser waits on a real CME file to verify)
 - [x] Phase 2: rolling driver regressions and regime detection
-- [ ] Phase 3: dashboard panels and alerts
+- [x] Phase 3: dashboard panels (alerts still to do)
 - [ ] Phase 4: daily refresh and hosting
