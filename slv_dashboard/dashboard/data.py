@@ -3,8 +3,10 @@
 from dataclasses import dataclass
 
 import pandas as pd
+import requests
 
-from slv_dashboard.config import REGRESSION_WINDOWS_WEEKS
+from slv_dashboard.config import (CACHE_DIR, DATA_SOURCE, HTTP_HEADERS, HTTP_TIMEOUT, PUBLISHED_DATA_URL,
+                                  REGRESSION_WINDOWS_WEEKS)
 from slv_dashboard.data import cache, dataset
 from slv_dashboard.models import drivers
 
@@ -24,7 +26,31 @@ class MissingCache(Exception):
     pass
 
 
+def sync_published() -> bool:
+    """Download the CSVs listed in the data branch's manifest into the cache.
+
+    Returns False (leaving the cache untouched) if the published data can't
+    be reached, e.g. before the refresh-data workflow has first run.
+    """
+    try:
+        resp = requests.get(f"{PUBLISHED_DATA_URL}/manifest.json", headers=HTTP_HEADERS, timeout=HTTP_TIMEOUT)
+        resp.raise_for_status()
+        files = resp.json()["files"]
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        for name in files:
+            if not name.endswith(".csv") or "/" in name or "\\" in name:
+                continue  # manifest is remote input: only plain CSV names in the cache dir
+            r = requests.get(f"{PUBLISHED_DATA_URL}/{name}", headers=HTTP_HEADERS, timeout=HTTP_TIMEOUT)
+            r.raise_for_status()
+            (CACHE_DIR / name).write_bytes(r.content)
+        return True
+    except (requests.RequestException, KeyError, ValueError):
+        return False
+
+
 def load() -> DashboardData:
+    if DATA_SOURCE == "published" or cache.load("prices") is None:
+        sync_published()
     if cache.load("prices") is None:
         raise MissingCache("python -m slv_dashboard.refresh")
     daily = dataset.build()

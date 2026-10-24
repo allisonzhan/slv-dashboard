@@ -14,6 +14,15 @@ load_dotenv(ROOT / ".env")
 # Optional: FRED's keyless CSV endpoint is used when this is empty
 FRED_API_KEY = os.getenv("FRED_API_KEY", "")
 
+# Where the dashboard gets its data:
+#   "local"     - data/cache/ (falls back to published data if the cache is empty)
+#   "published" - always download the CSVs the refresh-data workflow publishes
+#                 to the repo's `data` branch (set this on a hosted deployment)
+DATA_SOURCE = os.getenv("SLV_DATA_SOURCE", "local")
+PUBLISHED_DATA_URL = os.getenv(
+    "SLV_PUBLISHED_DATA_URL", "https://raw.githubusercontent.com/allisonzhan/slv-dashboard/data"
+)
+
 # Futures prices from yfinance
 PRICE_TICKERS = {
     "silver": "SI=F",

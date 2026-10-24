@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+# Make `slv_dashboard` importable when running bare `pytest` (as CI does)
+pythonpath = ["."]
+testpaths = ["tests"]
