@@ -40,6 +40,17 @@ https://www.cmegroup.com/delivery_reports/Silver_stocks.xls from your browser in
 (any name starting with `Silver_stocks`, e.g. `Silver_stocks_2026-10-20.xls`) and run the refresh.
 Each file is one day.
 
+## Driver model
+
+```bash
+python -m slv_dashboard.models.report   # fits everything, caches outputs, prints a summary
+```
+
+- **Weekly returns.** COMEX settles at 1:30pm ET while FRED's yields and dollar are stamped at other times of day, so daily betas would be biased toward zero. A week still in progress is dropped.
+- **Two specifications.** `MACRO` (real-yield change, dollar, copper) and `WITH_GOLD` (adds gold). Full-sample fits use Newey-West standard errors and a CUSUM stability test; rolling fits use 26- and 52-week windows.
+- **Monetary vs. industrial (rule).** Copper's share of explanatory power, `r2_copper / (r2_gold + r2_copper)`, is ranked against all earlier windows (no look-ahead). Top third is industrial, bottom third monetary. Gold out-explains copper in about 90% of windows, so a raw comparison would always say monetary. Since the labels are relative, a regime lasting years drifts toward "mixed"; check `industrial_share` for the level.
+- **Calm vs. stressed (Markov).** A two-regime Markov-switching regression on gold and copper. On 2010–2026 data the regimes separate by volatility (stressed weeks have higher gold *and* copper betas), so they are labelled by volatility, not as monetary/industrial. Returns are scaled to percent and the extreme 0.5% of weeks clipped, otherwise the fit collapses onto single crash weeks.
+
 ## Layout
 
 ```
@@ -59,6 +70,6 @@ tests/                  Offline tests
 
 - [x] Project skeleton
 - [x] Phase 1: data loaders and aligned dataset (COMEX parser waits on a real CME file to verify)
-- [ ] Phase 2: rolling driver regressions and regime detection
+- [x] Phase 2: rolling driver regressions and regime detection
 - [ ] Phase 3: dashboard panels and alerts
 - [ ] Phase 4: daily refresh and hosting
