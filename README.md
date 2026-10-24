@@ -51,6 +51,33 @@ python -m slv_dashboard.models.report   # fits everything, caches outputs, print
 - **Monetary vs. industrial (rule).** Copper's share of explanatory power, `r2_copper / (r2_gold + r2_copper)`, is ranked against all earlier windows (no look-ahead). Top third is industrial, bottom third monetary. Gold out-explains copper in about 90% of windows, so a raw comparison would always say monetary. Since the labels are relative, a regime lasting years drifts toward "mixed"; check `industrial_share` for the level.
 - **Calm vs. stressed (Markov).** A two-regime Markov-switching regression on gold and copper. On 2010–2026 data the regimes separate by volatility (stressed weeks have higher gold *and* copper betas), so they are labelled by volatility, not as monetary/industrial. Returns are scaled to percent and the extreme 0.5% of weeks clipped, otherwise the fit collapses onto single crash weeks.
 
+## Alerts
+
+Shown under the stat tiles (`models/alerts.py`), warnings first:
+
+| Alert | Fires when |
+|---|---|
+| Gold/silver ratio near historic high/low | Ratio in its top or bottom 10% since 2010 |
+| Speculative positioning stretched | Managed-money net % OI is 2+ standard deviations from its 3-year mean |
+| Managed money flipped | Net positioning changed sign in the latest report |
+| Regime changed | Either regime view changed within the last 4 weeks |
+| Silver unusually sensitive to copper | Rolling copper beta is 2x+ its full-sample value |
+| Prices are stale | Last price is more than 4 days old |
+
+## Automation and hosting
+
+- **CI** (`.github/workflows/tests.yml`) runs `pytest` on every PR and on pushes to main.
+- **Daily data refresh** (`.github/workflows/refresh-data.yml`) runs weekdays at 23:30 UTC. It restores the last published data, pulls every source, refits the models, and pushes the CSVs plus `manifest.json` to the `data` branch. Daily data never lands on `main`. Run it by hand from the Actions tab or with `gh workflow run refresh-data`.
+- **The app** reads `data/cache/` locally. If the cache is empty, or `SLV_DATA_SOURCE=published` is set, it downloads the published CSVs from the `data` branch instead.
+
+**Hosting on Streamlit Community Cloud (free):**
+1. Sign in at https://share.streamlit.io with your GitHub account.
+2. Create an app: repo `allisonzhan/slv-dashboard`, branch `main`, main file `app.py`.
+3. Under Advanced settings → Secrets, add `SLV_DATA_SOURCE = "published"`.
+4. Deploy, and share the URL with the club.
+
+COMEX stocks still need manual imports (CME blocks automated downloads). The SLV page may also block GitHub's servers; if the refresh log shows it failing, run the refresh locally to keep that history growing.
+
 ## Layout
 
 ```
@@ -71,5 +98,5 @@ tests/                  Offline tests
 - [x] Project skeleton
 - [x] Phase 1: data loaders and aligned dataset (COMEX parser waits on a real CME file to verify)
 - [x] Phase 2: rolling driver regressions and regime detection
-- [x] Phase 3: dashboard panels (alerts still to do)
-- [ ] Phase 4: daily refresh and hosting
+- [x] Phase 3: dashboard panels and alerts
+- [x] Phase 4: CI, daily data refresh, hosting setup (deploying to Streamlit Cloud is a manual step)

@@ -5,6 +5,7 @@ import streamlit as st
 from slv_dashboard.config import REGRESSION_WINDOWS_WEEKS
 from slv_dashboard.dashboard import charts
 from slv_dashboard.dashboard import data as dd
+from slv_dashboard.models import alerts
 
 st.set_page_config(page_title="Silver Dashboard", layout="wide")
 
@@ -84,6 +85,19 @@ if data.markov is not None:
     mk = data.markov.iloc[-1]
     k5.metric("Volatility regime (Markov)", mk["regime"].title(), f"p(stressed) {mk['p_stressed']:.0%}",
               delta_color="off", help="Two-regime Markov-switching model on weekly returns.")
+
+# --- Alerts --------------------------------------------------------------------------
+active = alerts.all_alerts(
+    daily, data.rule[window]["regime"],
+    data.markov["regime"] if data.markov is not None else None,
+    data.betas[window], float(data.full_betas["copper_ret"]), window,
+)
+if active:
+    for a in active:
+        show = st.warning if a.level == alerts.WARN else st.info
+        show(f"**{a.title}.** {a.detail}", icon=":material/warning:" if a.level == alerts.WARN else ":material/info:")
+else:
+    st.caption("No alerts: ratio, positioning and regimes are all inside normal ranges.")
 
 # --- Price and ratio -------------------------------------------------------------
 c1, c2 = st.columns(2)

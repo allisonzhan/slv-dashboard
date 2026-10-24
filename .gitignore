@@ -24,3 +24,6 @@ Thumbs.db
 # Hand-downloaded source files
 data/imports/*
 !data/imports/.gitkeep
+
+# Data branch worktree used by scripts/publish_data.sh
+.publish/

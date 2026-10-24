@@ -49,3 +49,39 @@ def test_small_multiples_one_axis_per_panel_with_reference_in_title():
     titles = [a.text for a in fig.layout.annotations]
     assert "Copper  ·  full sample 0.46" in titles
     assert fig.data[0].yaxis != fig.data[1].yaxis  # separate scales, never a shared dual axis
+
+
+class _Resp:
+    def __init__(self, payload=None, content=b""):
+        self._payload, self.content = payload, content
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._payload
+
+
+def test_sync_published_downloads_only_plain_csv_names(tmp_path, monkeypatch):
+    monkeypatch.setattr(dd, "CACHE_DIR", tmp_path)
+    manifest = {"files": ["prices.csv", "../evil.csv", "notes.txt"]}
+
+    def fake_get(url, **kwargs):
+        if url.endswith("manifest.json"):
+            return _Resp(manifest)
+        return _Resp(content=b"date,silver\n2026-10-22,54.6\n")
+
+    monkeypatch.setattr(dd.requests, "get", fake_get)
+    assert dd.sync_published() is True
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["prices.csv"]
+
+
+def test_sync_published_returns_false_when_unreachable(tmp_path, monkeypatch):
+    monkeypatch.setattr(dd, "CACHE_DIR", tmp_path)
+
+    def boom(url, **kwargs):
+        raise dd.requests.ConnectionError("offline")
+
+    monkeypatch.setattr(dd.requests, "get", boom)
+    assert dd.sync_published() is False
+    assert list(tmp_path.iterdir()) == []
