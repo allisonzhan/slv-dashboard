@@ -1,0 +1,53 @@
+"""Load cached data and model outputs for the dashboard."""
+
+from dataclasses import dataclass
+
+import pandas as pd
+
+from slv_dashboard.config import REGRESSION_WINDOWS_WEEKS
+from slv_dashboard.data import cache, dataset
+from slv_dashboard.models import drivers
+
+RANGES = {"1Y": 1, "3Y": 3, "5Y": 5, "10Y": 10, "All": None}
+
+
+@dataclass
+class DashboardData:
+    daily: pd.DataFrame
+    betas: dict[int, pd.DataFrame]          # window (weeks) -> rolling macro betas
+    rule: dict[int, pd.DataFrame]           # window (weeks) -> rule-based regime
+    markov: pd.DataFrame | None
+    full_betas: pd.Series                   # full-sample macro betas
+
+
+class MissingCache(Exception):
+    pass
+
+
+def load() -> DashboardData:
+    if cache.load("prices") is None:
+        raise MissingCache("python -m slv_dashboard.refresh")
+    daily = dataset.build()
+    betas, rule = {}, {}
+    for w in REGRESSION_WINDOWS_WEEKS:
+        b, r = cache.load(f"betas_macro_{w}w"), cache.load(f"regime_rule_{w}w")
+        if b is None or r is None:
+            raise MissingCache("python -m slv_dashboard.models.report")
+        betas[w], rule[w] = b, r
+    full = drivers.full_sample(drivers.weekly_returns(daily), drivers.MACRO).params.drop("const")
+    return DashboardData(daily, betas, rule, cache.load("regime_markov"), full)
+
+
+def clip(obj, range_key: str):
+    """Slice a frame or series to the selected trailing range."""
+    years = RANGES[range_key]
+    if years is None or obj is None or obj.empty:
+        return obj
+    return obj[obj.index >= obj.index.max() - pd.DateOffset(years=years)]
+
+
+def change(s: pd.Series, periods: int) -> float | None:
+    s = s.dropna()
+    if len(s) <= periods:
+        return None
+    return float(s.iloc[-1] - s.iloc[-1 - periods])
