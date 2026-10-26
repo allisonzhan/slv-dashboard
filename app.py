@@ -9,7 +9,7 @@ from slv_dashboard.analogs import features as feat
 from slv_dashboard.config import ANALOG_HORIZONS_WEEKS, ANALOG_K, REGRESSION_WINDOWS_WEEKS
 from slv_dashboard.dashboard import charts
 from slv_dashboard.dashboard import data as dd
-from slv_dashboard.models import alerts
+from slv_dashboard.models import alerts, trade, valuation
 
 st.set_page_config(page_title="Silver Dashboard", layout="wide")
 
@@ -36,6 +36,12 @@ def setup_scan(target: str, through: pd.Timestamp) -> pd.DataFrame:
     return setups.scan(analog_context(target, through))
 
 
+@st.cache_data(show_spinner="Fitting fair value")
+def fair_value(through: pd.Timestamp) -> tuple[pd.DataFrame, pd.DataFrame]:
+    d = load_data().long_daily
+    return valuation.fair_value(d), valuation.gsr_bands(d)
+
+
 def refresh_everything() -> None:
     from slv_dashboard import refresh
     from slv_dashboard.analogs import report as analog_report
@@ -48,6 +54,7 @@ def refresh_everything() -> None:
     load_data.clear()
     analog_context.clear()
     setup_scan.clear()
+    fair_value.clear()
 
 
 def pct(v, signed: bool = True) -> str:
@@ -131,8 +138,9 @@ def show_alerts() -> None:
         st.caption("No alerts: ratio, positioning and regimes are all inside normal ranges.")
 
 
-tab_brief, tab_analogs, tab_macro, tab_supply, tab_pos = st.tabs(
-    ["Weekly Brief", "Technicals & Analogs", "Macro", "Supply & Flows", "Positioning"])
+tab_brief, tab_analogs, tab_macro, tab_supply, tab_pos, tab_val, tab_trade = st.tabs(
+    ["Weekly Brief", "Technicals & Analogs", "Macro", "Supply & Flows", "Positioning", "Valuation", "Trade Builder"])
+fv, gsr_b = fair_value(through)
 
 # === Weekly Brief =====================================================================
 with tab_brief:
@@ -400,3 +408,74 @@ with tab_pos:
               "cot")
         st.caption("Shown from each Friday release date (positions as of the prior Tuesday). "
                    + dd.what_changed(daily["mm_net_pct_oi"].drop_duplicates(), ".1f", periods=1))
+
+# === Valuation ========================================================================
+with tab_val:
+    st.subheader("Silver vs. what its drivers imply")
+    st.markdown(f"**{valuation.read(fv)}**")
+    chart(charts.fair_value_chart(dd.clip(fv, range_key), t),
+          dd.clip(fv[["silver", "fair_value", "residual_pct", "z", "r2"]], range_key), "fv")
+    st.caption("Rolling 3-year regression of log silver on log gold, the 10Y real yield, the log dollar and log "
+               f"copper (weekly levels; latest R² {fv['r2'].iloc[-1]:.2f}). The band is ±1 residual σ. Levels "
+               "relationships drift, so treat this as 'stretched vs. recent relationships', not an anchor.")
+    v1, v2 = st.columns(2)
+    with v1:
+        st.markdown("**Rich/cheap z-score**")
+        z = dd.clip(fv["z"], range_key)
+        chart(charts.line({"Fair-value z": z}, t, hover_format="+.1f", height=220, ref=0), z.to_frame(), "fvz")
+    with v2:
+        st.markdown("**Gold/silver ratio vs. its 3-year range**")
+        chart(charts.ratio_bands(dd.clip(gsr_b, range_key), t, height=220), dd.clip(gsr_b, range_key), "gsr_b")
+        st.caption(f"Ratio {gsr_b['gsr'].iloc[-1]:.1f}, {gsr_b['pctile'].iloc[-1]:.0%} percentile of the last "
+                   "3 years. High = silver cheap vs. gold.")
+
+# === Trade Builder ====================================================================
+with tab_trade:
+    st.caption("Every lens scored −2 to +2 with its reasoning, then a trade plan whose stop and targets come from "
+               "how far silver actually moved after similar setups. A decision aid for club pitches, not advice.")
+    bt13 = data.backtests.get(13)
+    bt_verdict = backtest.verdict(backtest.score(bt13)) if bt13 is not None else ""
+    ctx_now = analog_context("silver", through)
+    card = trade.build_scorecard(
+        outcomes=silver_now.outcomes if silver_now is not None else None,
+        backtest_has_edge=bt_verdict.startswith("Useful"),
+        scan=setup_scan("silver", through), fv=fv, features=ctx_now.weekly.iloc[-1], curve=data.curve)
+    s1, s2 = st.columns([3, 2])
+    with s1:
+        st.subheader("Scorecard")
+        st.dataframe(card.frame().set_index("Lens"), width="stretch")
+    with s2:
+        st.metric("Overall", card.stance.title(), f"{card.total:+d} of ±12", delta_color="off",
+                  help="Bullish at +3 or more, bearish at −3 or less, otherwise neutral.")
+        tb1, tb2 = st.columns(2)
+        risk = tb1.number_input("Risk per trade (% of book)", 0.25, 5.0, 1.0, step=0.25, key="tb_risk")
+        hz = tb2.selectbox("Horizon", [4, 13, 26], index=1, format_func=lambda h: f"{h} weeks", key="tb_h")
+    iv_now = float(data.options["atm_iv"].iloc[-1]) if data.options is not None and not data.options.empty else None
+    tp = trade.plan(card, silver_now.outcomes if silver_now is not None else None, float(daily["silver"].iloc[-1]),
+                    horizon_weeks=hz, risk_pct=risk, iv=iv_now, gsr_pctile=float(gsr_b["pctile"].iloc[-1]))
+    st.subheader("Trade plan")
+    st.markdown(f"**{tp.instrument}**. {tp.rationale}")
+    if tp.stance != "neutral":
+        p1, p2, p3, p4 = st.columns(4)
+        p1.metric("Entry (SI)", f"${tp.entry:,.2f}")
+        p2.metric("Stop", f"${tp.stop:,.2f}", f"{tp.stop / tp.entry - 1:+.1%}", delta_color="off")
+        p3.metric("Targets", " / ".join(f"\\${x:,.2f}" for x in tp.targets),  # \$: two $ would render as math
+                  f"{tp.reward_risk:.1f}x reward/risk", delta_color="off")
+        p4.metric("Size", f"{tp.position_pct_of_book:.0%} of book", f"risks {tp.risk_pct_of_book:.1f}%",
+                  delta_color="off", help="For futures or SLV. For an option spread, risk the premium instead.")
+    st.markdown("**What would make us wrong:** " + "; ".join(tp.invalidation))
+
+    analog_lines = []
+    if silver_now is not None:
+        o13 = silver_now.outcomes.loc[13]
+        analog_lines.append(f"{len(silver_now.matches)} closest past setups: 13w median {o13['median']:+.1%} vs. "
+                            f"base {o13['base_median']:+.1%}, up {o13['hit_rate']:.0%} of the time "
+                            f"(p {o13['p_value']:.2f})")
+        analog_lines += [f"{d:%b %Y}{' (' + r['episode'] + ')' if r['episode'] else ''}: 13w "
+                         f"{r['fwd_13w']:+.1%}" for d, r in silver_now.matches.head(5).iterrows()]
+    pitch = trade.pitch_markdown(card, tp, as_of=through, analog_lines=analog_lines,
+                                 catalysts=catalysts.upcoming(days=hz * 7), backtest_verdict=bt_verdict)
+    with st.expander("Monthly pitch draft (markdown)", expanded=False):
+        st.markdown(pitch)
+    st.download_button("Download pitch draft", pitch, file_name=f"silver_pitch_{through:%Y-%m}.md",
+                       mime="text/markdown")

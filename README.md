@@ -74,6 +74,15 @@ python -m slv_dashboard.analogs.report   # current analogs, setup scan, walk-for
 - **Setups** (`analogs/setups.py`) are named rules, such as a crowded short, the ratio above 85 and turning, or a breakout with room to run. Each comes with its historical event study and a "live now" flag.
 - **Walk-forward backtest** (`analogs/backtest.py`) reruns the engine every week since 2010 using only what was known then. On 2000–2026 silver it does **not** beat the base rate on direction (4w and 13w). Read the analogs as context and risk ranges, not as a buy/sell signal, unless the backtest panel says otherwise.
 
+## Valuation and the trade builder
+
+- **Fair value** (`models/valuation.py`): a rolling 3-year regression of log silver on log gold, the 10Y real yield, the log dollar and log copper (weekly levels). The residual z-score is the rich/cheap read. Levels relationships drift, so treat it as "stretched vs. recent relationships", not an anchor. The gold/silver ratio is shown against its own 3-year 10th–90th percentile band.
+- **Scorecard** (`models/trade.py`): six lenses (analogs, setups, valuation, positioning, macro, curve), each scored −2 to +2 with its reason. The analog lens is capped at ±1 while the walk-forward backtest shows no edge. A total of +3 or more is bullish, −3 or less bearish.
+- **Trade plan**:
+  - **Vehicle** depends on the view and on SLV implied vol vs. the analogs' realised vol. Cheap options mean call/put spreads; rich ones mean the metal with a stop, or selling premium. With no directional edge and an extreme gold/silver ratio, it suggests a ratio pair.
+  - **Stop** is the analogs' worst-quartile adverse move; **targets** are their median and 75th-percentile favourable moves. **Size** risks a set % of the book.
+  - The tab exports a **monthly pitch draft** in markdown. It is club research, not investment advice.
+
 ## Alerts
 
 Shown under the stat tiles (`models/alerts.py`), warnings first:
@@ -131,3 +140,4 @@ tests/                  Offline tests
 - [x] Phase 5: historical analog engine, setup library, walk-forward backtest
 - [x] Phase 6: dashboard reorganised into tabs (Weekly Brief, Technicals & Analogs, Macro, Supply & Flows, Positioning)
 - [x] Phase 7: futures curve and implied lease rate, SLV option IV/skew, catalyst calendar, FOMC event study, new alerts
+- [x] Phase 8: fair-value model, gold/silver ratio bands, scorecard, trade plan and pitch draft

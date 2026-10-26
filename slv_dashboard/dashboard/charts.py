@@ -194,3 +194,37 @@ def technical_chart(tech: pd.DataFrame, t: Theme, *, height: int = 420, hover_fo
     fig.update_layout(showlegend=True)
     fig.update_yaxes(range=[0, 100], row=2, col=1, title=dict(text="RSI"))
     return fig
+
+
+def fair_value_chart(fv: pd.DataFrame, t: Theme, *, height: int = 300) -> go.Figure:
+    """Silver vs. driver fair value, with the ±1σ residual band."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["band_hi"], mode="lines", line=dict(width=0), hoverinfo="skip",
+                             showlegend=False))
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["band_lo"], mode="lines", line=dict(width=0), fill="tonexty",
+                             fillcolor=t.band, name="Fair value ±1σ", hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["fair_value"], mode="lines", name="Driver fair value",
+                             line=dict(color=t.series[1], width=2, dash="dot"),
+                             hovertemplate="%{y:,.2f}<extra>Fair value</extra>"))
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["silver"], mode="lines", name="Silver",
+                             line=dict(color=t.series[0], width=2), hovertemplate="%{y:,.2f}<extra>Silver</extra>"))
+    _layout(fig, t, height, "$/oz")
+    fig.update_layout(showlegend=True)
+    return fig
+
+
+def ratio_bands(b: pd.DataFrame, t: Theme, *, height: int = 260) -> go.Figure:
+    """Gold/silver ratio inside its rolling 10th-90th percentile band."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=b.index, y=b["p90"], mode="lines", line=dict(width=0), hoverinfo="skip",
+                             showlegend=False))
+    fig.add_trace(go.Scatter(x=b.index, y=b["p10"], mode="lines", line=dict(width=0), fill="tonexty",
+                             fillcolor=t.band, name="3y 10th–90th pct", hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=b.index, y=b["p50"], mode="lines", name="3y median",
+                             line=dict(color=t.baseline, width=1, dash="dot"),
+                             hovertemplate="%{y:.1f}<extra>3y median</extra>"))
+    fig.add_trace(go.Scatter(x=b.index, y=b["gsr"], mode="lines", name="Gold/silver ratio",
+                             line=dict(color=t.series[0], width=2), hovertemplate="%{y:.1f}<extra>Ratio</extra>"))
+    _layout(fig, t, height)
+    fig.update_layout(showlegend=True)
+    return fig
