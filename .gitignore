@@ -24,3 +24,13 @@ Thumbs.db
 # Hand-downloaded source files
 data/imports/*
 !data/imports/.gitkeep
+
+# Data branch worktree used by scripts/publish_data.sh
+.publish/
+
+# Generated weekly briefs and chart packs
+reports/
+
+# Local Claude Code settings (skills in .claude/skills/ are shared)
+.claude/*
+!.claude/skills/

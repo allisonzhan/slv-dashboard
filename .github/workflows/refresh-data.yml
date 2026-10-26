@@ -1,0 +1,49 @@
+name: refresh-data
+
+# Weekdays after the US close: pull every source, refit the models, and
+# publish the cache CSVs to the `data` branch (keeps main free of daily data
+# commits). The hosted dashboard reads from that branch.
+on:
+  schedule:
+    - cron: "30 23 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Restore previously published data
+        run: scripts/publish_data.sh restore
+
+      # Sources that fail (e.g. a blocked page) are logged and skipped;
+      # the step fails only if the aligned dataset can't be built.
+      - name: Refresh sources
+        run: python -m slv_dashboard.refresh || echo "::warning::Some sources failed; see log above"
+
+      - name: Refit models
+        run: python -m slv_dashboard.models.report
+
+      # Current analogs, setup scan and the walk-forward backtest (a few minutes)
+      - name: Analogs and backtest
+        run: python -m slv_dashboard.analogs.report
+
+      # snapshot.json is what the weekly-brief agent reads
+      - name: Snapshot for the agent
+        run: python -m slv_dashboard.snapshot
+
+      - name: Publish to data branch
+        run: scripts/publish_data.sh publish
