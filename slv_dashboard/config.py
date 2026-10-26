@@ -23,17 +23,25 @@ PUBLISHED_DATA_URL = os.getenv(
     "SLV_PUBLISHED_DATA_URL", "https://raw.githubusercontent.com/allisonzhan/slv-dashboard/data"
 )
 
-# Futures prices from yfinance
+# Daily closes from yfinance. Futures are continuous front-month series; SLV is
+# the clean (roll-free) return series for ETF trades.
 PRICE_TICKERS = {
     "silver": "SI=F",
     "gold": "GC=F",
     "copper": "HG=F",
+    "slv": "SLV",       # iShares Silver Trust, 2006 on
+    "sil": "SIL",       # Global X silver miners, 2010 on
+    "vix": "^VIX",
+    "oil": "CL=F",
 }
 
 # Macro series from FRED
 FRED_SERIES = {
     "real_yield_10y": "DFII10",   # 10Y TIPS yield, %
     "dollar_broad": "DTWEXBGS",   # Broad trade-weighted dollar index
+    "nominal_2y": "DGS2",         # 2Y Treasury yield, % (Fed expectations)
+    "breakeven_10y": "T10YIE",    # 10Y breakeven inflation, %
+    "fed_funds": "DFF",           # Effective fed funds rate, %
 }
 
 # CFTC disaggregated futures-only report, COMEX silver
@@ -52,7 +60,19 @@ REGRESSION_WINDOWS_WEEKS = [26, 52]
 # windows; this many weeks of windows must exist before labels start.
 REGIME_MIN_HISTORY_WEEKS = 104
 
+# Driver models, regimes and the main panels use 2010 on. Loaders pull from
+# LONG_HISTORY_START so the analog engine has more past setups to match
+# (macro series start later: real yields 2003, broad dollar 2006, COT 2006).
 HISTORY_START = "2010-01-01"
+LONG_HISTORY_START = "2000-01-01"
+
+# Analog engine (slv_dashboard/analogs)
+ANALOG_HORIZONS_WEEKS = [1, 4, 13, 26]
+ANALOG_K = 20                 # analogs kept per query
+ANALOG_MIN_GAP_WEEKS = 8      # at most one analog per 8-week stretch
+ANALOG_SHAPE_DAYS = 60        # trading days of price path compared for shape
+ANALOG_SHAPE_WEIGHT = 0.3     # share of the match score from path shape
+ANALOG_BACKTEST_START = "2010-01-01"
 
 HTTP_HEADERS = {"User-Agent": "slv-dashboard (COINS research; github.com/allisonzhan/slv-dashboard)"}
 HTTP_TIMEOUT = 60

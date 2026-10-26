@@ -20,13 +20,16 @@ pytest                            # offline parser tests
 
 A FRED API key is optional (the keyless CSV endpoint is used otherwise). If you want one, copy `.env.example` to `.env` and add it. Never commit `.env`.
 
-## Data sources (v1, all free)
+## Data sources (all free)
+
+Loaders pull the full history. The driver models and main panels use 2010 on, and the analog engine uses all of it.
 
 | Series | Source | History |
 |---|---|---|
-| Silver, gold, copper futures | yfinance (`SI=F`, `GC=F`, `HG=F`) | 2010 on |
-| 10Y real yield, broad dollar index | FRED (`DFII10`, `DTWEXBGS`) | 2010 on |
-| Positioning | CFTC disaggregated COT, COMEX silver | 2010 on, weekly |
+| Silver, gold, copper, oil futures | yfinance (`SI=F`, `GC=F`, `HG=F`, `CL=F`) | 2000 on |
+| SLV, silver miners, VIX | yfinance (`SLV`, `SIL`, `^VIX`) | SLV 2006 on, SIL 2010 on |
+| 10Y real yield, broad dollar, 2Y yield, breakevens, fed funds | FRED (`DFII10`, `DTWEXBGS`, `DGS2`, `T10YIE`, `DFF`) | 2003/2006 on |
+| Positioning | CFTC disaggregated COT, COMEX silver | 2006 on, weekly |
 | SLV ounces in trust | iShares product page | Today only; builds up with each daily refresh |
 | Registered / eligible stocks | CME daily silver stocks report | Manual import, see below |
 | Shanghai premium | v2 | |
@@ -50,6 +53,21 @@ python -m slv_dashboard.models.report   # fits everything, caches outputs, print
 - **Two specifications.** `MACRO` (real-yield change, dollar, copper) and `WITH_GOLD` (adds gold). Full-sample fits use Newey-West standard errors and a CUSUM stability test; rolling fits use 26- and 52-week windows.
 - **Monetary vs. industrial (rule).** Copper's share of explanatory power, `r2_copper / (r2_gold + r2_copper)`, is ranked against all earlier windows (no look-ahead). Top third is industrial, bottom third monetary. Gold out-explains copper in about 90% of windows, so a raw comparison would always say monetary. Since the labels are relative, a regime lasting years drifts toward "mixed"; check `industrial_share` for the level.
 - **Calm vs. stressed (Markov).** A two-regime Markov-switching regression on gold and copper. On 2010â€“2026 data the regimes separate by volatility (stressed weeks have higher gold *and* copper betas), so they are labelled by volatility, not as monetary/industrial. Returns are scaled to percent and the extreme 0.5% of weeks clipped, otherwise the fit collapses onto single crash weeks.
+
+## Historical analogs
+
+```bash
+python -m slv_dashboard.analogs.report   # current analogs, setup scan, walk-forward backtest (a few minutes)
+```
+
+"Silver is here, momentum is X, positioning is Y: when did this happen before, and what happened next?"
+
+- **State vector** (`analogs/features.py`), one row per week, built with no look-ahead. *Technical*: distance from the 50/200-day MAs, 4/13/26-week returns, RSI, Bollinger %b, drawdown from the 52-week high, vol percentile. *Macro*: 13-week change in real yields, the dollar, gold and copper, plus the gold/silver ratio z-score. *Positioning*: managed-money percentile and 4-week change. Groups can be switched off, e.g. for price-only analogs.
+- **Matching** (`analogs/engine.py`) combines state distance (standardised against earlier weeks only, each group weighted equally) with path shape (correlation of the last 60 days of price). A candidate's forward window must end before today. Analogs are de-clustered (one per 8 weeks) so one episode can't fill the list.
+- **Outcomes** at 1, 4, 13 and 26 weeks: hit rate, median and IQR, max adverse/favourable excursion (for stops and targets), forward realised vol (for options). Each is shown **against the base rate** over the same history, with a bootstrap p-value.
+- **Targets**: silver futures (default, 2000 on), SLV, the gold/silver ratio, SLV/SIL and silver/copper, so ratio and spread trades use the same engine.
+- **Setups** (`analogs/setups.py`) are named rules, such as a crowded short, the ratio above 85 and turning, or a breakout with room to run. Each comes with its historical event study and a "live now" flag.
+- **Walk-forward backtest** (`analogs/backtest.py`) reruns the engine every week since 2010 using only what was known then. On 2000–2026 silver it does **not** beat the base rate on direction (4w and 13w). Read the analogs as context and risk ranges, not as a buy/sell signal, unless the backtest panel says otherwise.
 
 ## Alerts
 
@@ -87,6 +105,7 @@ slv_dashboard/
   refresh.py            Pull every source into the cache
   data/                 Loaders (one module per source) and dataset.py (aligned daily frame)
   models/               Regressions and regime detection
+  analogs/              Historical analogs, setups and backtest
 data/cache/             Local data cache (git-ignored)
 data/imports/           Hand-downloaded files, e.g. CME reports (git-ignored)
 notebooks/              Research notebooks
@@ -100,3 +119,4 @@ tests/                  Offline tests
 - [x] Phase 2: rolling driver regressions and regime detection
 - [x] Phase 3: dashboard panels and alerts
 - [x] Phase 4: CI, daily data refresh, hosting setup (deploying to Streamlit Cloud is a manual step)
+- [x] Phase 5: historical analog engine, setup library, walk-forward backtest

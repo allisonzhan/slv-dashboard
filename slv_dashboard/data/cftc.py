@@ -3,7 +3,8 @@
 import pandas as pd
 import requests
 
-from slv_dashboard.config import CFTC_DISAGG_URL, CFTC_SILVER_CODE, HISTORY_START, HTTP_HEADERS, HTTP_TIMEOUT
+from slv_dashboard.config import (CFTC_DISAGG_URL, CFTC_SILVER_CODE, HTTP_HEADERS, HTTP_TIMEOUT,
+                                  LONG_HISTORY_START)
 from slv_dashboard.data import cache
 
 NAME = "cot"
@@ -24,7 +25,7 @@ FIELDS = {
 }
 
 
-def fetch(start: str = HISTORY_START) -> pd.DataFrame:
+def fetch(start: str = LONG_HISTORY_START) -> pd.DataFrame:
     params = {
         "cftc_contract_market_code": CFTC_SILVER_CODE,
         "$where": f"report_date_as_yyyy_mm_dd >= '{start}T00:00:00'",

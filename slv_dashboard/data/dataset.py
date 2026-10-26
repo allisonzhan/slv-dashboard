@@ -3,15 +3,17 @@
 import numpy as np
 import pandas as pd
 
+from slv_dashboard.config import HISTORY_START
 from slv_dashboard.data import cache, cftc, comex, etf, fred, prices
 
 
-def build() -> pd.DataFrame:
-    """Daily frame on silver's trading calendar.
+def build(start: str | None = HISTORY_START) -> pd.DataFrame:
+    """Daily frame on silver's trading calendar, from ``start`` (None = all cached history).
 
     Daily macro series are forward-filled over holidays. Weekly COT and
     sparse COMEX/ETF snapshots are forward-filled so each day shows the
-    latest known value, never a future one.
+    latest known value, never a future one. Forward-filling runs before the
+    start cut, so the first rows still carry the latest earlier value.
     """
     px = cache.load(prices.NAME)
     if px is None:
@@ -27,6 +29,8 @@ def build() -> pd.DataFrame:
             other.index = other.index + cftc.RELEASE_LAG
         df = df.join(other.reindex(df.index.union(other.index)).ffill().reindex(df.index))
 
+    if start is not None:
+        df = df[df.index >= start]
     df["gold_silver_ratio"] = df["gold"] / df["silver"]
     for col in ("silver", "gold", "copper"):
         df[f"{col}_ret"] = np.log(df[col]).diff()

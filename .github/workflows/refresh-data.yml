@@ -37,5 +37,9 @@ jobs:
       - name: Refit models
         run: python -m slv_dashboard.models.report
 
+      # Current analogs, setup scan and the walk-forward backtest (a few minutes)
+      - name: Analogs and backtest
+        run: python -m slv_dashboard.analogs.report
+
       - name: Publish to data branch
         run: scripts/publish_data.sh publish
