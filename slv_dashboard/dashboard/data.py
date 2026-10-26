@@ -22,6 +22,8 @@ class DashboardData:
     full_betas: pd.Series                   # full-sample macro betas
     long_daily: pd.DataFrame                # all cached history (2000 on), for the analog engine
     backtests: dict[int, pd.DataFrame]      # horizon (weeks) -> walk-forward analog backtest
+    curve: pd.DataFrame | None              # SI front-next spread and implied lease rate
+    options: pd.DataFrame | None            # SLV ATM IV and skew snapshots
 
 
 class MissingCache(Exception):
@@ -65,7 +67,8 @@ def load() -> DashboardData:
         betas[w], rule[w] = b, r
     full = drivers.full_sample(drivers.weekly_returns(daily), drivers.MACRO).params.drop("const")
     backtests = {h: bt for h in (4, 13) if (bt := cache.load(f"analog_backtest_{h}w")) is not None and not bt.empty}
-    return DashboardData(daily, betas, rule, cache.load("regime_markov"), full, long_daily, backtests)
+    return DashboardData(daily, betas, rule, cache.load("regime_markov"), full, long_daily, backtests,
+                         cache.load("curve"), cache.load("options"))
 
 
 def clip(obj, range_key: str):

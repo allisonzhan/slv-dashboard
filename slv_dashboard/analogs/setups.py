@@ -12,6 +12,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
+from slv_dashboard import catalysts
 from slv_dashboard.analogs import engine
 from slv_dashboard.config import ANALOG_MIN_GAP_WEEKS
 
@@ -52,6 +53,8 @@ SETUPS = [
           lambda w: w["dd_52w"] < -0.25, "bullish"),
     Setup("overextended", "Up 30%+ in 13 weeks with RSI above 70", "Parabolic move, prone to sharp pullbacks",
           lambda w: (w["ret_13w"] > 0.30) & (w["rsi14"] > 70), "bearish"),
+    Setup("fomc_week", "FOMC decision week (2019 on)", "How silver has traded from the week of a Fed decision",
+          lambda w: catalysts.fomc_week_mask(w.index), "event"),
 ]
 
 

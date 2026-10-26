@@ -31,12 +31,17 @@ Loaders pull the full history. The driver models and main panels use 2010 on, an
 | 10Y real yield, broad dollar, 2Y yield, breakevens, fed funds | FRED (`DFII10`, `DTWEXBGS`, `DGS2`, `T10YIE`, `DFF`) | 2003/2006 on |
 | Positioning | CFTC disaggregated COT, COMEX silver | 2006 on, weekly |
 | SLV ounces in trust | iShares product page | Today only; builds up with each daily refresh |
+| SI futures curve (next 4 liquid contracts) | yfinance (`SIZ26.CMX` etc.) | 6-month backfill, then builds up |
+| SLV option IV and skew (~30 days) | yfinance option chain, IV backed out from bid/ask | Snapshots; refresh during market hours |
+| FOMC decisions, payrolls/CPI estimates | `slv_dashboard/catalysts.py` plus `data/imports/calendar.csv` | 2019–2027 |
 | Registered / eligible stocks | CME daily silver stocks report | Manual import, see below |
 | Shanghai premium | v2 | |
 
 **Notes**
 - COT positions are as of Tuesday but released Friday. The dataset lags them 3 days so models never see data before it was public.
 - yfinance `=F` tickers are continuous front-month series, so roll dates can show small artificial jumps.
+- **Implied lease rate** = fed funds minus the annualised front-to-next futures spread. When it rises, or the curve flips into backwardation, near-term metal is scarce (Oct 2025). January contracts are skipped because they trade thinly.
+- **Catalysts:** FOMC dates are hard-coded from the Fed's schedule (extend yearly). Payrolls and CPI dates are estimates. Put exact dates or other events in `data/imports/calendar.csv` (`date,event`).
 
 **COMEX stocks (manual import).** CME blocks automated downloads. Save
 https://www.cmegroup.com/delivery_reports/Silver_stocks.xls from your browser into `data/imports/`
@@ -80,7 +85,11 @@ Shown under the stat tiles (`models/alerts.py`), warnings first:
 | Managed money flipped | Net positioning changed sign in the latest report |
 | Regime changed | Either regime view changed within the last 4 weeks |
 | Silver unusually sensitive to copper | Rolling copper beta is 2x+ its full-sample value |
-| Prices are stale | Last price is more than 4 days old |
+| Prices / COT are stale | Last price more than 4 days old, or last COT release more than ~2 weeks old |
+| Futures in backwardation / lease rate elevated | Next contract below front, or implied lease rate at least 3% |
+| Large SLV inflow/outflow | Ounces in trust moved at least 1% since the last reading |
+| Setup live | A named setup (see Historical analogs) fired this week |
+| Historical analogs lean higher/lower | 13-week analog median at least 5 pts from base, p ≤ 0.10 |
 
 ## Automation and hosting
 
@@ -121,3 +130,4 @@ tests/                  Offline tests
 - [x] Phase 4: CI, daily data refresh, hosting setup (deploying to Streamlit Cloud is a manual step)
 - [x] Phase 5: historical analog engine, setup library, walk-forward backtest
 - [x] Phase 6: dashboard reorganised into tabs (Weekly Brief, Technicals & Analogs, Macro, Supply & Flows, Positioning)
+- [x] Phase 7: futures curve and implied lease rate, SLV option IV/skew, catalyst calendar, FOMC event study, new alerts

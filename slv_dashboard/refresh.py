@@ -2,7 +2,7 @@
 
 import sys
 
-from slv_dashboard.data import cftc, comex, dataset, etf, fred, prices
+from slv_dashboard.data import cftc, comex, curve, dataset, etf, fred, options, prices
 
 SOURCES = [
     ("prices", prices.refresh),
@@ -10,6 +10,8 @@ SOURCES = [
     ("CFTC COT", cftc.refresh),
     ("SLV holdings", etf.refresh),
     ("COMEX stocks (imports)", comex.refresh),
+    ("SI futures curve", curve.refresh),     # after FRED: uses fed funds
+    ("SLV option IV", options.refresh),
 ]
 
 

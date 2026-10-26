@@ -3,6 +3,7 @@
 import pandas as pd
 import streamlit as st
 
+from slv_dashboard import catalysts
 from slv_dashboard.analogs import backtest, engine, setups
 from slv_dashboard.analogs import features as feat
 from slv_dashboard.config import ANALOG_HORIZONS_WEEKS, ANALOG_K, REGRESSION_WINDOWS_WEEKS
@@ -109,10 +110,14 @@ if data.markov is not None:
               delta_color="off", help="Two-regime Markov-switching model on weekly returns.")
 
 # --- Alerts --------------------------------------------------------------------------
+through = data.long_daily.index.max()
+silver_now = engine.find(analog_context("silver", through))
 active = alerts.all_alerts(
     daily, data.rule[window]["regime"],
     data.markov["regime"] if data.markov is not None else None,
     data.betas[window], float(data.full_betas["copper_ret"]), window,
+    curve=data.curve, setup_scan=setup_scan("silver", through),
+    analog_outcomes=silver_now.outcomes if silver_now is not None else None,
 )
 
 
@@ -126,7 +131,6 @@ def show_alerts() -> None:
         st.caption("No alerts: ratio, positioning and regimes are all inside normal ranges.")
 
 
-through = data.long_daily.index.max()
 tab_brief, tab_analogs, tab_macro, tab_supply, tab_pos = st.tabs(
     ["Weekly Brief", "Technicals & Analogs", "Macro", "Supply & Flows", "Positioning"])
 
@@ -141,7 +145,7 @@ with tab_brief:
                    "Percentile = where today's level sits since 2010.")
     with b2:
         st.subheader("Analog read (silver futures)")
-        res_s = engine.find(analog_context("silver", through))
+        res_s = silver_now
         if res_s is not None:
             for h in (4, 13):
                 o = res_s.outcomes.loc[h]
@@ -161,6 +165,12 @@ with tab_brief:
         for _, r in live.iterrows():
             st.markdown(f"**{r['setup']}** ({r['view']}): {r['n']:.0f} past episodes, 13w median "
                         f"{pct(r['median'])} vs. base {pct(r['base_median'])}, up {pct(r['hit_rate'], False)}")
+        st.subheader("Catalysts, next 3 weeks")
+        cal = catalysts.upcoming(days=21)
+        if cal.empty:
+            st.caption("Nothing scheduled. Add events in data/imports/calendar.csv.")
+        for _, r in cal.iterrows():
+            st.markdown(f"- **{r['date']:%a %b %d}** · {r['event']}")
 
 # === Technicals & Analogs ============================================================
 with tab_analogs:
@@ -316,6 +326,53 @@ with tab_macro:
 
 # === Supply & Flows ===================================================================
 with tab_supply:
+    st.subheader("Futures curve: is physical metal tight?")
+    if data.curve is not None and not data.curve.empty:
+        cv = data.curve.dropna(subset=["front", "next"])
+        last = cv.iloc[-1]
+        q1, q2, q3 = st.columns(3)
+        q1.metric(f"Spread {last['front_contract'][:5]} → {last['next_contract'][:5]}", f"{last['spread']:+.3f}",
+                  "backwardation" if last["backwardation"] else "contango", delta_color="off")
+        q2.metric("Implied financing", f"{last['implied_financing_pct']:.2f}%", delta_color="off",
+                  help="ln(next/front) / years between expiries, annualised")
+        q3.metric("Implied lease rate", f"{last['implied_lease_pct']:+.2f}%", delta_color="off",
+                  help="Fed funds minus implied financing. Rising lease = metal scarce near-term "
+                       "(Oct 2025 squeeze). Negative is normal when contango is rich.")
+        v1, v2 = st.columns(2)
+        with v1:
+            ls = cv["implied_lease_pct"].dropna()
+            chart(charts.line({"Implied lease rate": ls}, t, y_title="%", hover_format=".2f", height=220, ref=0),
+                  cv[["front", "next", "spread", "implied_financing_pct", "implied_lease_pct"]], "lease")
+            st.caption("History builds up with each refresh (yfinance only lists live contracts). "
+                       "Contract rolls show as jumps.")
+        with v2:
+            shape_cols = [c for c in ("c1", "c2", "c3", "c4") if c in cv and pd.notna(cv[c].iloc[-1])]
+            if shape_cols:
+                shape = pd.Series([cv[c].iloc[-1] for c in shape_cols],
+                                  index=pd.to_datetime([cv[f"{c}_expiry"].iloc[-1] for c in shape_cols]))
+                chart(charts.line({"Curve today": shape}, t, y_title="$/oz", height=220), shape.to_frame("price"),
+                      "curve_shape")
+                st.caption("Today's curve by contract expiry. Upward slope = contango.")
+    else:
+        st.caption("No curve data yet: press Refresh data.")
+
+    st.subheader("SLV options: implied vs. what the analogs realised")
+    if data.options is not None and not data.options.empty:
+        op = data.options.iloc[-1]
+        res_vol = silver_now.outcomes.loc[4, "fwd_vol_median"] if silver_now is not None else float("nan")
+        o1, o2, o3, o4 = st.columns(4)
+        o1.metric(f"ATM IV ({op['days']:.0f}d)", f"{op['atm_iv']:.0%}", delta_color="off")
+        o2.metric("Analog realised vol (4w)", f"{res_vol:.0%}",
+                  f"IV {'rich' if op['atm_iv'] > res_vol else 'cheap'} by {abs(op['atm_iv'] - res_vol):.0%}",
+                  delta_color="off", help="IV above realised favours selling premium or spreads; below favours buying.")
+        o3.metric("Skew (10% OTM call − put)", f"{op['skew_call_minus_put']:+.1%}", delta_color="off",
+                  help="Positive = upside calls bid over puts: the market is paying for a squeeze.")
+        o4.metric("1σ move to expiry", f"±{op['expected_move_pct']:.1%}", delta_color="off")
+        st.caption(f"As of {data.options.index[-1]:%b %d}, expiry {op['expiry']}. IV is backed out from bid/ask "
+                   "mids, so it only updates when the refresh runs during market hours.")
+    else:
+        st.caption("No option snapshot yet: run the refresh during US market hours.")
+
     st.subheader("COMEX warehouse stocks")
     if {"registered_oz", "eligible_oz"} <= set(daily.columns):
         inv = dd.clip(daily[["registered_oz", "eligible_oz"]].dropna(how="all") / 1e6, range_key)
