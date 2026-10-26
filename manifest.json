@@ -1,0 +1,25 @@
+{
+  "updated": "2026-10-26T20:57:25Z",
+  "files": [
+    "analog_backtest_13w.csv",
+    "analog_backtest_4w.csv",
+    "analog_outcomes.csv",
+    "analog_paths.csv",
+    "analogs_current.csv",
+    "betas_macro_26w.csv",
+    "betas_macro_52w.csv",
+    "betas_with_gold_26w.csv",
+    "betas_with_gold_52w.csv",
+    "cot.csv",
+    "curve.csv",
+    "etf_holdings.csv",
+    "macro.csv",
+    "news.csv",
+    "options.csv",
+    "prices.csv",
+    "regime_markov.csv",
+    "regime_rule_26w.csv",
+    "regime_rule_52w.csv",
+    "setups.csv"
+  ]
+}
