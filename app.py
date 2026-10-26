@@ -3,7 +3,7 @@
 import pandas as pd
 import streamlit as st
 
-from slv_dashboard import catalysts
+from slv_dashboard import catalysts, export
 from slv_dashboard.analogs import backtest, engine, setups
 from slv_dashboard.analogs import features as feat
 from slv_dashboard.config import ANALOG_HORIZONS_WEEKS, ANALOG_K, REGRESSION_WINDOWS_WEEKS
@@ -179,6 +179,21 @@ with tab_brief:
             st.caption("Nothing scheduled. Add events in data/imports/calendar.csv.")
         for _, r in cal.iterrows():
             st.markdown(f"- **{r['date']:%a %b %d}** · {r['event']}")
+
+    st.subheader("Meeting brief")
+    st.caption("Exports a one-page brief, a pitch draft and the chart pack to reports/<date>/. The judgment "
+               "sections (bottom line, news, talking points) are written by the weekly-brief agent in Claude Code.")
+    if st.button("Export brief and chart pack"):
+        with st.spinner("Writing the brief and rendering charts"):
+            out = export.export()
+        st.success(f"Written to {out}")
+    reports = sorted(export.REPORTS_DIR.glob("20*")) if export.REPORTS_DIR.exists() else []
+    if reports and (reports[-1] / "brief.md").exists():
+        latest = reports[-1] / "brief.md"
+        with st.expander(f"Latest brief ({reports[-1].name})"):
+            text = export.AGENT_RE.sub(lambda m: m.group(2), latest.read_text(encoding="utf-8"))
+            st.markdown(text.replace("$", "\\$"))   # \$: pairs of $ would render as math
+        st.download_button("Download brief.md", latest.read_bytes(), file_name=f"silver_brief_{reports[-1].name}.md")
 
 # === Technicals & Analogs ============================================================
 with tab_analogs:
@@ -476,6 +491,6 @@ with tab_trade:
     pitch = trade.pitch_markdown(card, tp, as_of=through, analog_lines=analog_lines,
                                  catalysts=catalysts.upcoming(days=hz * 7), backtest_verdict=bt_verdict)
     with st.expander("Monthly pitch draft (markdown)", expanded=False):
-        st.markdown(pitch)
+        st.markdown(pitch.replace("$", "\\$"))
     st.download_button("Download pitch draft", pitch, file_name=f"silver_pitch_{through:%Y-%m}.md",
                        mime="text/markdown")

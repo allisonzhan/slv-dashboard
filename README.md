@@ -2,10 +2,15 @@
 
 Silver fundamentals dashboard and driver model for the COINS (Commodity Investing by Students) metals division at Virginia Tech.
 
-Two pieces share one data pipeline:
+Built around the division's actual job (a weekly update, a monthly trade pitch, and a lot of charts):
 
-1. **Fundamentals dashboard** – price, gold/silver ratio, CFTC positioning, COMEX inventories, ETF holdings, real yields and the dollar, in one Streamlit app.
-2. **Driver model** – rolling regressions of silver returns on real yields, the dollar, copper and gold, plus regime detection ("monetary" vs. "industrial" silver).
+1. **Weekly Brief**: what changed, alerts, the analog read, live setups and the next catalysts on one tab, plus an exported one-page brief and chart pack.
+2. **Historical analogs**: past weeks that looked like this one (trend, macro, positioning, chart shape), what silver did next against the base rate, a named-setup scanner, and an honest walk-forward track record.
+3. **Drivers and fundamentals**: real yields, the 2Y, breakevens and the dollar; rolling sensitivities and the monetary/industrial regime; CFTC positioning; the futures curve and implied lease rate; SLV flows and option IV; COMEX stocks.
+4. **Valuation and Trade Builder**: driver fair value, gold/silver ratio bands, a six-lens scorecard, and a trade plan (vehicle, stop, targets, size) with a downloadable pitch draft.
+5. **Agent**: Claude Code skills that refresh everything, research the week's relevant news and write the brief and the pitch.
+
+New to silver? Start with [docs/silver-playbook.md](docs/silver-playbook.md): what moves silver, how desks work the week, how to read analogs without fooling yourself, and a meeting checklist.
 
 ## Setup
 
@@ -15,7 +20,16 @@ python -m venv .venv
 pip install -r requirements-dev.txt
 python -m slv_dashboard.refresh   # pull all sources into data/cache/
 streamlit run app.py
-pytest                            # offline parser tests
+pytest                            # offline tests
+```
+
+Weekly, before the meeting (or let the agent do it; see "Agent" below):
+
+```bash
+python -m slv_dashboard.refresh          # data
+python -m slv_dashboard.models.report    # driver regressions and regimes
+python -m slv_dashboard.analogs.report   # analogs, setups, walk-forward backtest (a few minutes)
+python -m slv_dashboard.export           # reports/<date>/brief.md, brief.html, pitch.md, charts/*.png
 ```
 
 A FRED API key is optional (the keyless CSV endpoint is used otherwise). If you want one, copy `.env.example` to `.env` and add it. Never commit `.env`.
@@ -83,6 +97,22 @@ python -m slv_dashboard.analogs.report   # current analogs, setup scan, walk-for
   - **Stop** is the analogs' worst-quartile adverse move; **targets** are their median and 75th-percentile favourable moves. **Size** risks a set % of the book.
   - The tab exports a **monthly pitch draft** in markdown. It is club research, not investment advice.
 
+## Agent
+
+**MVP: Claude Code is the agent.** Two project skills live in `.claude/skills/`:
+
+- **`weekly-brief`** runs the refresh, the models, the analogs and the export. It then reads `snapshot.json` and the tagged headlines in `news.csv`, web-searches to verify the week's relevant macro and silver news, and writes the brief's judgment sections (bottom line, news that matters, talking points). Finally it re-renders `brief.html`; print that to PDF for the meeting.
+- **`monthly-pitch`** drafts the monthly trade pitch from the Trade Builder output: thesis, evidence, history, what's priced, vehicle, risk, exit plan.
+
+In Claude Code, from this folder, ask for "the weekly brief" or run `/weekly-brief`. Both skills share their instructions with `prompts/`, so the agent's behaviour is defined in one place.
+
+The data side is plain Python and needs no LLM:
+- `slv_dashboard/snapshot.py` writes every dashboard number to `data/cache/snapshot.json`; the nightly workflow also publishes it.
+- `slv_dashboard/data/news.py` pulls free RSS feeds and keyword-tags each headline to a driver bucket.
+- `slv_dashboard/export.py` renders the brief and the chart pack. The PNG chart pack needs `kaleido` and a local Chrome.
+
+**Later: the Anthropic API.** `slv_dashboard/agent.py` is a documented stub for drafting the brief unattended, e.g. from the refresh workflow. It will read `ANTHROPIC_API_KEY` from `.env` locally, or from a GitHub Actions secret, and reuse the same prompts. It isn't built yet; until then the key is unused, and `.env.example` reserves it.
+
 ## Alerts
 
 Shown under the stat tiles (`models/alerts.py`), warnings first:
@@ -124,10 +154,18 @@ slv_dashboard/
   data/                 Loaders (one module per source) and dataset.py (aligned daily frame)
   models/               Regressions and regime detection
   analogs/              Historical analogs, setups and backtest
+  catalysts.py          FOMC / data calendar
+  snapshot.py           All dashboard numbers as JSON for the agent
+  export.py             Weekly brief, pitch draft and chart pack
+  agent.py              Future Anthropic API agent (stub)
 data/cache/             Local data cache (git-ignored)
 data/imports/           Hand-downloaded files, e.g. CME reports (git-ignored)
 notebooks/              Research notebooks
 tests/                  Offline tests
+prompts/                Agent instructions (shared by the skills and the future API agent)
+.claude/skills/         Claude Code skills: weekly-brief, monthly-pitch
+docs/                   Silver playbook
+reports/                Generated briefs and chart packs (git-ignored)
 ```
 
 ## Roadmap
@@ -141,3 +179,6 @@ tests/                  Offline tests
 - [x] Phase 6: dashboard reorganised into tabs (Weekly Brief, Technicals & Analogs, Macro, Supply & Flows, Positioning)
 - [x] Phase 7: futures curve and implied lease rate, SLV option IV/skew, catalyst calendar, FOMC event study, new alerts
 - [x] Phase 8: fair-value model, gold/silver ratio bands, scorecard, trade plan and pitch draft
+- [x] Phase 9: snapshot for the agent, news triage, brief and chart-pack export, Claude Code skills, silver playbook
+- [ ] Anthropic API agent (`agent.py`) so the brief drafts itself after the nightly refresh
+- [ ] Shanghai premium and LBMA vault data; COMEX parser check against a real CME file

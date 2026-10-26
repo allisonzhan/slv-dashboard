@@ -2,7 +2,9 @@
 
 import sys
 
-from slv_dashboard.data import cftc, comex, curve, dataset, etf, fred, options, prices
+import pandas as pd
+
+from slv_dashboard.data import cftc, comex, curve, dataset, etf, fred, news, options, prices
 
 SOURCES = [
     ("prices", prices.refresh),
@@ -12,6 +14,7 @@ SOURCES = [
     ("COMEX stocks (imports)", comex.refresh),
     ("SI futures curve", curve.refresh),     # after FRED: uses fed funds
     ("SLV option IV", options.refresh),
+    ("News headlines", news.refresh),
 ]
 
 
@@ -23,7 +26,9 @@ def main() -> int:
             if df is None or df.empty:
                 print(f"  {label:<24} no data (see module docstring)")
             else:
-                print(f"  {label:<24} {len(df):>6} rows, latest {df.index.max():%Y-%m-%d}")
+                latest = df.index.max()
+                when = f", latest {latest:%Y-%m-%d}" if isinstance(latest, pd.Timestamp) else ""
+                print(f"  {label:<24} {len(df):>6} rows{when}")
         except Exception as exc:  # keep going so one bad source doesn't block the rest
             failures += 1
             print(f"  {label:<24} FAILED: {exc}")

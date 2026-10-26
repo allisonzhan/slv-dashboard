@@ -31,8 +31,9 @@ case "${1:-}" in
     ;;
   publish)
     [ -d "$WT" ] || checkout_branch
-    rm -f "$WT"/*.csv
+    rm -f "$WT"/*.csv "$WT"/snapshot.json
     cp "$CACHE"/*.csv "$WT"/
+    cp "$CACHE"/snapshot.json "$WT"/ 2>/dev/null || true
     (cd "$WT" && ls *.csv | python3 -c 'import json,sys,datetime; print(json.dumps({"updated": datetime.datetime.utcnow().isoformat(timespec="seconds")+"Z", "files": sorted(l.strip() for l in sys.stdin)}, indent=2))' > manifest.json)
     git -C "$WT" add -A
     if git -C "$WT" diff --cached --quiet; then

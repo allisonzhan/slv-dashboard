@@ -23,7 +23,8 @@ class Setup:
     name: str
     description: str
     rule: Callable[[pd.DataFrame], pd.Series]
-    view: str            # what the setup is usually read as: bullish / bearish / volatility
+    view: str            # what the setup is usually read as: bullish / bearish / volatility / event
+    min_gap_weeks: int = ANALOG_MIN_GAP_WEEKS   # scheduled events recur faster than the default episode gap
 
 
 def _gsr_high_turning(w):
@@ -54,7 +55,7 @@ SETUPS = [
     Setup("overextended", "Up 30%+ in 13 weeks with RSI above 70", "Parabolic move, prone to sharp pullbacks",
           lambda w: (w["ret_13w"] > 0.30) & (w["rsi14"] > 70), "bearish"),
     Setup("fomc_week", "FOMC decision week (2019 on)", "How silver has traded from the week of a Fed decision",
-          lambda w: catalysts.fomc_week_mask(w.index), "event"),
+          lambda w: catalysts.fomc_week_mask(w.index), "event", min_gap_weeks=1),
 ]
 
 
@@ -92,7 +93,7 @@ def scan(ctx: engine.AnalogContext, setups: list[Setup] = SETUPS, live_weeks: in
             mask = s.rule(w).fillna(False).astype(bool)
         except KeyError:  # feature not available for this target
             continue
-        res = study(ctx, mask)
+        res = study(ctx, mask, s.min_gap_weeks)
         live = bool(mask.iloc[-live_weeks:].any())
         last = res["dates"].max() if len(res["dates"]) else pd.NaT
         for h, st in res["stats"].iterrows():
