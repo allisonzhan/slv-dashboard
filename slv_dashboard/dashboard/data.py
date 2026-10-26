@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import pandas as pd
 import requests
 
-from slv_dashboard.config import (CACHE_DIR, DATA_SOURCE, HTTP_HEADERS, HTTP_TIMEOUT, PUBLISHED_DATA_URL,
-                                  REGRESSION_WINDOWS_WEEKS)
+from slv_dashboard.config import (CACHE_DIR, DATA_SOURCE, HISTORY_START, HTTP_HEADERS, HTTP_TIMEOUT,
+                                  PUBLISHED_DATA_URL, REGRESSION_WINDOWS_WEEKS)
 from slv_dashboard.data import cache, dataset
 from slv_dashboard.models import drivers
 
@@ -20,6 +20,8 @@ class DashboardData:
     rule: dict[int, pd.DataFrame]           # window (weeks) -> rule-based regime
     markov: pd.DataFrame | None
     full_betas: pd.Series                   # full-sample macro betas
+    long_daily: pd.DataFrame                # all cached history (2000 on), for the analog engine
+    backtests: dict[int, pd.DataFrame]      # horizon (weeks) -> walk-forward analog backtest
 
 
 class MissingCache(Exception):
@@ -53,7 +55,8 @@ def load() -> DashboardData:
         sync_published()
     if cache.load("prices") is None:
         raise MissingCache("python -m slv_dashboard.refresh")
-    daily = dataset.build()
+    long_daily = dataset.build(start=None)
+    daily = long_daily[long_daily.index >= HISTORY_START]
     betas, rule = {}, {}
     for w in REGRESSION_WINDOWS_WEEKS:
         b, r = cache.load(f"betas_macro_{w}w"), cache.load(f"regime_rule_{w}w")
@@ -61,7 +64,8 @@ def load() -> DashboardData:
             raise MissingCache("python -m slv_dashboard.models.report")
         betas[w], rule[w] = b, r
     full = drivers.full_sample(drivers.weekly_returns(daily), drivers.MACRO).params.drop("const")
-    return DashboardData(daily, betas, rule, cache.load("regime_markov"), full)
+    backtests = {h: bt for h in (4, 13) if (bt := cache.load(f"analog_backtest_{h}w")) is not None and not bt.empty}
+    return DashboardData(daily, betas, rule, cache.load("regime_markov"), full, long_daily, backtests)
 
 
 def clip(obj, range_key: str):
@@ -77,3 +81,64 @@ def change(s: pd.Series, periods: int) -> float | None:
     if len(s) <= periods:
         return None
     return float(s.iloc[-1] - s.iloc[-1 - periods])
+
+
+def percentile(s: pd.Series) -> float | None:
+    """Where the latest value sits in the series' own history (0-1)."""
+    s = s.dropna()
+    if s.empty:
+        return None
+    return float((s <= s.iloc[-1]).mean())
+
+
+def what_changed(s: pd.Series, fmt: str = ",.2f", unit: str = "", periods: int = 5) -> str:
+    """One-line 'what changed this week' caption: level, 1-week change, percentile."""
+    s = s.dropna()
+    if s.empty:
+        return ""
+    chg = change(s, periods)
+    pct = percentile(s)
+    parts = [f"Now {s.iloc[-1]:{fmt}}{unit}"]
+    if chg is not None:
+        parts.append(f"{chg:+{fmt}}{unit} this week")
+    if pct is not None:
+        parts.append(f"{pct:.0%} percentile since {s.index[0]:%Y}")
+    return " · ".join(parts)
+
+
+# Rows of the weekly "what changed" table: column, label, number format, unit
+WEEKLY_ROWS = [
+    ("silver", "Silver ($/oz)", ",.2f", ""),
+    ("gold", "Gold ($/oz)", ",.0f", ""),
+    ("gold_silver_ratio", "Gold/silver ratio", ".1f", ""),
+    ("copper", "Copper ($/lb)", ",.3f", ""),
+    ("real_yield_10y", "10Y real yield", ".2f", "%"),
+    ("nominal_2y", "2Y Treasury", ".2f", "%"),
+    ("breakeven_10y", "10Y breakeven", ".2f", "%"),
+    ("dollar_broad", "Broad dollar", ".1f", ""),
+    ("vix", "VIX", ".1f", ""),
+    ("mm_net_pct_oi", "Managed money net (% OI)", ".1f", ""),
+    ("slv_ounces", "SLV ounces (M)", ",.1f", ""),
+]
+
+
+def weekly_table(daily: pd.DataFrame) -> pd.DataFrame:
+    """Level, 1-week and 4-week change, and percentile for each tracked series."""
+    rows = []
+    for col, label, fmt, unit in WEEKLY_ROWS:
+        if col not in daily or daily[col].dropna().empty:
+            continue
+        s = daily[col].dropna()
+        if col == "slv_ounces":
+            s = s / 1e6
+        if col == "mm_net_pct_oi":
+            s = s[s.ne(s.shift())]  # one value per COT release
+            w1, w4 = change(s, 1), change(s, 4)
+        else:
+            w1, w4 = change(s, 5), change(s, 20)
+        rows.append({"Series": label, "Latest": f"{s.iloc[-1]:{fmt}}{unit}",
+                     "1w change": "" if w1 is None else f"{w1:+{fmt}}",
+                     "4w change": "" if w4 is None else f"{w4:+{fmt}}",
+                     "Percentile": "" if (pc := percentile(s)) is None else f"{pc:.0%}",
+                     "As of": f"{s.index[-1]:%b %d}"})
+    return pd.DataFrame(rows).set_index("Series")

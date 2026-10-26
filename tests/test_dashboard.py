@@ -85,3 +85,22 @@ def test_sync_published_returns_false_when_unreachable(tmp_path, monkeypatch):
     monkeypatch.setattr(dd.requests, "get", boom)
     assert dd.sync_published() is False
     assert list(tmp_path.iterdir()) == []
+
+
+def test_fan_chart_extends_past_last_date():
+    hist = _series(1)
+    paths = pd.DataFrame({"a": [0, 0.01, 0.02], "b": [0, -0.01, -0.03]})
+    fig = charts.fan_chart(hist, paths, charts.LIGHT)
+    median = next(tr for tr in fig.data if tr.name == "Analog median")
+    assert pd.Timestamp(median.x[0]) == hist.index[-1]
+    assert median.y[0] == hist.iloc[-1]
+
+
+def test_weekly_table_and_what_changed():
+    s = _series(2) + 10
+    daily = pd.DataFrame({"silver": s, "gold_silver_ratio": s / 2})
+    table = dd.weekly_table(daily)
+    assert list(table.index) == ["Silver ($/oz)", "Gold/silver ratio"]
+    assert table.loc["Silver ($/oz)", "1w change"] == "+5.00"
+    assert table.loc["Silver ($/oz)", "Percentile"] == "100%"
+    assert "this week" in dd.what_changed(s)

@@ -67,7 +67,7 @@ python -m slv_dashboard.analogs.report   # current analogs, setup scan, walk-for
 - **Outcomes** at 1, 4, 13 and 26 weeks: hit rate, median and IQR, max adverse/favourable excursion (for stops and targets), forward realised vol (for options). Each is shown **against the base rate** over the same history, with a bootstrap p-value.
 - **Targets**: silver futures (default, 2000 on), SLV, the gold/silver ratio, SLV/SIL and silver/copper, so ratio and spread trades use the same engine.
 - **Setups** (`analogs/setups.py`) are named rules, such as a crowded short, the ratio above 85 and turning, or a breakout with room to run. Each comes with its historical event study and a "live now" flag.
-- **Walk-forward backtest** (`analogs/backtest.py`) reruns the engine every week since 2010 using only what was known then. On 2000–2026 silver it does **not** beat the base rate on direction (4w and 13w). Read the analogs as context and risk ranges, not as a buy/sell signal, unless the backtest panel says otherwise.
+- **Walk-forward backtest** (`analogs/backtest.py`) reruns the engine every week since 2010 using only what was known then. On 2000â€“2026 silver it does **not** beat the base rate on direction (4w and 13w). Read the analogs as context and risk ranges, not as a buy/sell signal, unless the backtest panel says otherwise.
 
 ## Alerts
 
@@ -120,3 +120,4 @@ tests/                  Offline tests
 - [x] Phase 3: dashboard panels and alerts
 - [x] Phase 4: CI, daily data refresh, hosting setup (deploying to Streamlit Cloud is a manual step)
 - [x] Phase 5: historical analog engine, setup library, walk-forward backtest
+- [x] Phase 6: dashboard reorganised into tabs (Weekly Brief, Technicals & Analogs, Macro, Supply & Flows, Positioning)
