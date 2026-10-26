@@ -1,15 +1,15 @@
-"""Front-month futures closes for silver, gold and copper (yfinance)."""
+"""Daily closes from yfinance: metals futures, SLV, miners, VIX and oil."""
 
 import pandas as pd
 import yfinance as yf
 
-from slv_dashboard.config import HISTORY_START, PRICE_TICKERS
+from slv_dashboard.config import LONG_HISTORY_START, PRICE_TICKERS
 from slv_dashboard.data import cache
 
 NAME = "prices"
 
 
-def fetch(start: str = HISTORY_START) -> pd.DataFrame:
+def fetch(start: str = LONG_HISTORY_START) -> pd.DataFrame:
     raw = yf.download(list(PRICE_TICKERS.values()), start=start, progress=False, auto_adjust=False)
     closes = raw["Close"].rename(columns={v: k for k, v in PRICE_TICKERS.items()})
     closes.index = pd.to_datetime(closes.index).tz_localize(None)

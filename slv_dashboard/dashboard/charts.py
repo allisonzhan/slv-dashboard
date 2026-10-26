@@ -119,3 +119,112 @@ def probability_area(s: pd.Series, t: Theme, *, name: str, height: int = 200) ->
     _layout(fig, t, height, "probability, %")
     fig.update_yaxes(range=[0, 100])
     return fig
+
+
+def fan_chart(history: pd.Series, paths: pd.DataFrame, t: Theme, *, height: int = 340,
+              hover_format: str = ",.2f", y_title: str = "") -> go.Figure:
+    """Recent price, then the analogs' forward paths scaled to today's level.
+
+    ``paths`` is trading-days-ahead x analog, cumulative return. Future dates
+    are business days from the last history date. Shows the 10-90 and 25-75
+    percentile bands, the median path, and each analog as a hairline.
+    """
+    last_date, last = history.index[-1], float(history.iloc[-1])
+    future = pd.bdate_range(last_date, periods=len(paths))
+    levels = last * (1 + paths.to_numpy())
+    fig = go.Figure()
+    for j in range(levels.shape[1]):
+        fig.add_trace(go.Scatter(x=future, y=levels[:, j], mode="lines", line=dict(color=t.baseline, width=1),
+                                 hoverinfo="skip", showlegend=False))
+    q = pd.DataFrame(levels, index=future).quantile([0.1, 0.25, 0.5, 0.75, 0.9], axis=1).T
+    for lo, hi, name in ((0.1, 0.9, "10–90%"), (0.25, 0.75, "25–75%")):
+        fig.add_trace(go.Scatter(x=future, y=q[hi], mode="lines", line=dict(width=0), hoverinfo="skip",
+                                 showlegend=False))
+        fig.add_trace(go.Scatter(x=future, y=q[lo], mode="lines", line=dict(width=0), fill="tonexty",
+                                 fillcolor=t.band, name=f"Analogs {name}",
+                                 hovertemplate=f"%{{y:{hover_format}}}<extra>{name} low</extra>"))
+    fig.add_trace(go.Scatter(x=history.index, y=history.values, mode="lines", name="Actual",
+                             line=dict(color=t.text_primary, width=2),
+                             hovertemplate=f"%{{y:{hover_format}}}<extra>Actual</extra>"))
+    fig.add_trace(go.Scatter(x=future, y=q[0.5], mode="lines", name="Analog median",
+                             line=dict(color=t.series[0], width=2, dash="dot"),
+                             hovertemplate=f"%{{y:{hover_format}}}<extra>Analog median</extra>"))
+    fig.add_vline(x=last_date, line=dict(color=t.baseline, width=1))
+    _layout(fig, t, height, y_title)
+    fig.update_layout(showlegend=True)
+    return fig
+
+
+def outcome_bars(outcomes: pd.DataFrame, t: Theme, *, height: int = 240) -> go.Figure:
+    """Analog median forward return vs. the base rate, per horizon, with the analog IQR."""
+    x = [f"{int(h)}w" for h in outcomes.index]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=x, y=outcomes["median"] * 100, name="Analogs (median)", marker_color=t.series[0],
+                         error_y=dict(type="data", symmetric=False, color=t.muted, thickness=1,
+                                      array=(outcomes["q75"] - outcomes["median"]) * 100,
+                                      arrayminus=(outcomes["median"] - outcomes["q25"]) * 100),
+                         hovertemplate="%{y:+.1f}%<extra>Analogs</extra>"))
+    fig.add_trace(go.Bar(x=x, y=outcomes["base_median"] * 100, name="Base rate (median)",
+                         marker_color=t.baseline, hovertemplate="%{y:+.1f}%<extra>Base rate</extra>"))
+    fig.add_hline(y=0, line=dict(color=t.baseline, width=1))
+    _layout(fig, t, height, "forward return, %")
+    fig.update_layout(barmode="group", bargap=0.35, hovermode="x unified", showlegend=True)
+    return fig
+
+
+def technical_chart(tech: pd.DataFrame, t: Theme, *, height: int = 420, hover_format: str = ",.2f") -> go.Figure:
+    """Price with 50/200-day MAs and Bollinger bands, RSI underneath."""
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.72, 0.28], vertical_spacing=0.04)
+    fig.add_trace(go.Scatter(x=tech.index, y=tech["bb_upper"], mode="lines", line=dict(width=0),
+                             hoverinfo="skip", showlegend=False), row=1, col=1)
+    fig.add_trace(go.Scatter(x=tech.index, y=tech["bb_lower"], mode="lines", line=dict(width=0), fill="tonexty",
+                             fillcolor=t.band, name="Bollinger (20, 2σ)", hoverinfo="skip"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=tech.index, y=tech["price"], mode="lines", name="Price",
+                             line=dict(color=t.text_primary, width=2),
+                             hovertemplate=f"%{{y:{hover_format}}}<extra>Price</extra>"), row=1, col=1)
+    for col, name, color in (("sma50", "50d MA", t.series[0]), ("sma200", "200d MA", t.series[1])):
+        fig.add_trace(go.Scatter(x=tech.index, y=tech[col], mode="lines", name=name, line=dict(color=color, width=1.5),
+                                 hovertemplate=f"%{{y:{hover_format}}}<extra>{name}</extra>"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=tech.index, y=tech["rsi14"], mode="lines", name="RSI(14)",
+                             line=dict(color=t.series[0], width=1.5), showlegend=False,
+                             hovertemplate="%{y:.0f}<extra>RSI</extra>"), row=2, col=1)
+    for lvl in (30, 70):
+        fig.add_hline(y=lvl, line=dict(color=t.baseline, width=1, dash="dot"), row=2, col=1)
+    _layout(fig, t, height)
+    fig.update_layout(showlegend=True)
+    fig.update_yaxes(range=[0, 100], row=2, col=1, title=dict(text="RSI"))
+    return fig
+
+
+def fair_value_chart(fv: pd.DataFrame, t: Theme, *, height: int = 300) -> go.Figure:
+    """Silver vs. driver fair value, with the ±1σ residual band."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["band_hi"], mode="lines", line=dict(width=0), hoverinfo="skip",
+                             showlegend=False))
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["band_lo"], mode="lines", line=dict(width=0), fill="tonexty",
+                             fillcolor=t.band, name="Fair value ±1σ", hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["fair_value"], mode="lines", name="Driver fair value",
+                             line=dict(color=t.series[1], width=2, dash="dot"),
+                             hovertemplate="%{y:,.2f}<extra>Fair value</extra>"))
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["silver"], mode="lines", name="Silver",
+                             line=dict(color=t.series[0], width=2), hovertemplate="%{y:,.2f}<extra>Silver</extra>"))
+    _layout(fig, t, height, "$/oz")
+    fig.update_layout(showlegend=True)
+    return fig
+
+
+def ratio_bands(b: pd.DataFrame, t: Theme, *, height: int = 260) -> go.Figure:
+    """Gold/silver ratio inside its rolling 10th-90th percentile band."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=b.index, y=b["p90"], mode="lines", line=dict(width=0), hoverinfo="skip",
+                             showlegend=False))
+    fig.add_trace(go.Scatter(x=b.index, y=b["p10"], mode="lines", line=dict(width=0), fill="tonexty",
+                             fillcolor=t.band, name="3y 10th–90th pct", hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=b.index, y=b["p50"], mode="lines", name="3y median",
+                             line=dict(color=t.baseline, width=1, dash="dot"),
+                             hovertemplate="%{y:.1f}<extra>3y median</extra>"))
+    fig.add_trace(go.Scatter(x=b.index, y=b["gsr"], mode="lines", name="Gold/silver ratio",
+                             line=dict(color=t.series[0], width=2), hovertemplate="%{y:.1f}<extra>Ratio</extra>"))
+    _layout(fig, t, height)
+    fig.update_layout(showlegend=True)
+    return fig

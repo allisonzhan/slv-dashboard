@@ -1,0 +1,156 @@
+"""Everything the dashboard knows this week, as one JSON file for the agent.
+
+The weekly-brief agent (a Claude Code skill for now; see README "Agent")
+reads data/cache/snapshot.json instead of the dashboard, so it works from the
+same numbers the club sees. Run after refresh, models.report and
+analogs.report:
+
+    python -m slv_dashboard.snapshot
+"""
+
+import json
+import math
+from datetime import date
+
+import numpy as np
+import pandas as pd
+
+from slv_dashboard import catalysts
+from slv_dashboard.analogs import backtest, engine, setups
+from slv_dashboard.config import CACHE_DIR
+from slv_dashboard.dashboard import data as dd
+from slv_dashboard.data import cache, news
+from slv_dashboard.models import alerts, trade, valuation
+
+PATH = CACHE_DIR / "snapshot.json"
+SCHEMA_VERSION = 1
+REQUIRED_KEYS = ["schema_version", "as_of", "headline", "what_changed", "regime", "alerts", "analogs", "backtest",
+                 "setups_live", "valuation", "positioning", "curve", "options", "scorecard", "trade_plan",
+                 "catalysts", "news"]
+
+
+def _clean(x):
+    """JSON-safe: NaN -> None, numpy -> Python, timestamps -> ISO dates."""
+    if isinstance(x, dict):
+        return {str(k): _clean(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_clean(v) for v in x]
+    if isinstance(x, (pd.Timestamp, date)):
+        return x.isoformat()[:10]
+    if isinstance(x, (np.bool_, bool)):
+        return bool(x)
+    if isinstance(x, (np.integer,)):
+        return int(x)
+    if isinstance(x, (np.floating, float)):
+        return None if math.isnan(x) else round(float(x), 6)
+    return x
+
+
+def build(today: date | None = None) -> dict:
+    data = dd.load()
+    daily, long_daily = data.daily, data.long_daily
+    through = long_daily.index.max()
+
+    ctx = engine.AnalogContext.from_daily(long_daily, "silver")
+    res = engine.find(ctx)
+    scan = setups.scan(ctx)
+    fv, gsr_b = valuation.fair_value(long_daily), valuation.gsr_bands(long_daily)
+    feats = ctx.weekly.iloc[-1]
+    verdicts = {h: backtest.verdict(backtest.score(bt)) for h, bt in data.backtests.items()}
+
+    active = alerts.all_alerts(
+        daily, data.rule[52]["regime"], data.markov["regime"] if data.markov is not None else None,
+        data.betas[52], float(data.full_betas["copper_ret"]), 52,
+        curve=data.curve, setup_scan=scan, analog_outcomes=res.outcomes if res is not None else None)
+
+    card = trade.build_scorecard(outcomes=res.outcomes if res is not None else None,
+                                 backtest_has_edge=verdicts.get(13, "").startswith("Useful"),
+                                 scan=scan, fv=fv, features=feats, curve=data.curve)
+    iv = float(data.options["atm_iv"].iloc[-1]) if data.options is not None and not data.options.empty else None
+    tp = trade.plan(card, res.outcomes if res is not None else None, float(daily["silver"].iloc[-1]),
+                    iv=iv, gsr_pctile=float(gsr_b["pctile"].iloc[-1]))
+
+    analogs = None
+    if res is not None:
+        analogs = {
+            "query_date": res.query_date,
+            "n_candidates": res.n_candidates,
+            "now": engine.describe(res.query_features),
+            "outcomes": {int(h): row.to_dict() for h, row in res.outcomes.iterrows()},
+            "matches": [{"date": d, "episode": r["episode"], "context": engine.describe(r),
+                         "shape_corr": r["shape_corr"], "fwd_4w": r.get("fwd_4w"), "fwd_13w": r.get("fwd_13w"),
+                         "fwd_26w": r.get("fwd_26w")} for d, r in res.matches.iterrows()],
+        }
+
+    live = scan[scan["live"] & (scan["horizon_weeks"] == 13)] if not scan.empty else scan
+    mm = daily["mm_net_pct_oi"].dropna() if "mm_net_pct_oi" in daily else pd.Series(dtype=float)
+    mm_reports = mm[mm.ne(mm.shift())]
+    rule = data.rule[52].iloc[-1]
+    news_df = cache.load_table(news.NAME)
+
+    snap = {
+        "schema_version": SCHEMA_VERSION,
+        "as_of": through,
+        "headline": {
+            "silver": daily["silver"].iloc[-1],
+            "silver_1w_change": dd.change(daily["silver"], 5),
+            "silver_4w_change": dd.change(daily["silver"], 20),
+            "gold_silver_ratio": daily["gold_silver_ratio"].iloc[-1],
+            "stance": card.stance,
+            "score": card.total,
+        },
+        "what_changed": dd.weekly_table(daily).reset_index().to_dict(orient="records"),
+        "regime": {
+            "monetary_industrial_52w": rule["regime"], "copper_share_pctile": rule["share_pctile"],
+            "volatility": data.markov["regime"].iloc[-1] if data.markov is not None else None,
+            "p_stressed": data.markov["p_stressed"].iloc[-1] if data.markov is not None else None,
+            "betas_52w": data.betas[52].iloc[-1].to_dict(),
+            "full_sample_betas": data.full_betas.to_dict(),
+        },
+        "alerts": [{"level": a.level, "title": a.title, "detail": a.detail} for a in active],
+        "analogs": analogs,
+        "backtest": verdicts,
+        "setups_live": [{"setup": r["setup"], "view": r["view"], "episodes": r["n"], "median_13w": r["median"],
+                         "base_13w": r["base_median"], "hit_rate": r["hit_rate"], "p_value": r["p_value"]}
+                        for _, r in live.iterrows()],
+        "valuation": {
+            "read": valuation.read(fv), "fair_value": fv["fair_value"].iloc[-1], "z": fv["z"].iloc[-1],
+            "residual_pct": fv["residual_pct"].iloc[-1], "r2": fv["r2"].iloc[-1],
+            "gsr": gsr_b["gsr"].iloc[-1], "gsr_pctile_3y": gsr_b["pctile"].iloc[-1],
+            "gsr_p10": gsr_b["p10"].iloc[-1], "gsr_p50": gsr_b["p50"].iloc[-1], "gsr_p90": gsr_b["p90"].iloc[-1],
+        },
+        "positioning": {
+            "mm_net_pct_oi": mm_reports.iloc[-1] if len(mm_reports) else None,
+            "change_vs_prior_report": dd.change(mm_reports, 1),
+            "pctile_history": feats.get("mm_pctile"),
+            "released": mm_reports.index[-1] if len(mm_reports) else None,
+        },
+        "curve": data.curve.dropna(subset=["front", "next"]).iloc[-1][
+            ["front", "next", "spread", "implied_financing_pct", "implied_lease_pct", "backwardation",
+             "front_contract", "next_contract"]].to_dict() if data.curve is not None and not data.curve.empty else None,
+        "options": (data.options.iloc[-1].to_dict() | {"as_of": data.options.index[-1]})
+        if data.options is not None and not data.options.empty else None,
+        "scorecard": [{"lens": s.lens, "score": s.score, "reason": s.reason} for s in card.scores],
+        "trade_plan": {k: v for k, v in vars(tp).items()},
+        "catalysts": catalysts.upcoming(today, days=14).to_dict(orient="records"),
+        "news": news.top_by_bucket(news_df) if news_df is not None and not news_df.empty else {},
+    }
+    return _clean(snap)
+
+
+def write(snap: dict | None = None) -> dict:
+    snap = snap or build()
+    PATH.parent.mkdir(parents=True, exist_ok=True)
+    PATH.write_text(json.dumps(snap, indent=2), encoding="utf-8")
+    return snap
+
+
+def main() -> None:
+    snap = write()
+    h = snap["headline"]
+    print(f"Wrote {PATH} (as of {snap['as_of']}): silver {h['silver']:.2f}, stance {h['stance']} ({h['score']:+d}), "
+          f"{len(snap['alerts'])} alerts, {len(snap['setups_live'])} live setups")
+
+
+if __name__ == "__main__":
+    main()

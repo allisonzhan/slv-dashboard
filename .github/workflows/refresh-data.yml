@@ -37,5 +37,13 @@ jobs:
       - name: Refit models
         run: python -m slv_dashboard.models.report
 
+      # Current analogs, setup scan and the walk-forward backtest (a few minutes)
+      - name: Analogs and backtest
+        run: python -m slv_dashboard.analogs.report
+
+      # snapshot.json is what the weekly-brief agent reads
+      - name: Snapshot for the agent
+        run: python -m slv_dashboard.snapshot
+
       - name: Publish to data branch
         run: scripts/publish_data.sh publish

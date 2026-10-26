@@ -28,3 +28,16 @@ def append(name: str, new: pd.DataFrame) -> pd.DataFrame:
     combined = combined[~combined.index.duplicated(keep="last")].sort_index()
     save(name, combined)
     return combined
+
+
+def save_table(name: str, df: pd.DataFrame) -> None:
+    """Save a frame that isn't date-indexed (e.g. setup scans, analog paths)."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path(name), index=df.index.name is not None)
+
+
+def load_table(name: str, index_col: str | None = None) -> pd.DataFrame | None:
+    p = path(name)
+    if not p.exists():
+        return None
+    return pd.read_csv(p, index_col=index_col)

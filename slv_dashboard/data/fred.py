@@ -1,11 +1,11 @@
-"""Macro series from FRED: 10Y real yield and broad dollar index."""
+"""Macro series from FRED: real and nominal yields, breakevens, fed funds, broad dollar."""
 
 import io
 
 import pandas as pd
 import requests
 
-from slv_dashboard.config import FRED_API_KEY, FRED_SERIES, HISTORY_START, HTTP_HEADERS, HTTP_TIMEOUT
+from slv_dashboard.config import FRED_API_KEY, FRED_SERIES, HTTP_HEADERS, HTTP_TIMEOUT, LONG_HISTORY_START
 from slv_dashboard.data import cache
 
 NAME = "macro"
@@ -31,7 +31,7 @@ def parse_keyless_csv(text: str) -> pd.Series:
     return s.dropna()
 
 
-def fetch(start: str = HISTORY_START) -> pd.DataFrame:
+def fetch(start: str = LONG_HISTORY_START) -> pd.DataFrame:
     df = pd.DataFrame({name: _fetch_series(sid, start) for name, sid in FRED_SERIES.items()})
     df.index.name = "date"
     return df
