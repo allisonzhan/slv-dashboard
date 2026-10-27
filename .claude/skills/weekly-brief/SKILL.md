@@ -16,10 +16,10 @@ future API agent (`slv_dashboard/agent.py`) will use.
    python -m slv_dashboard.refresh
    python -m slv_dashboard.models.report
    python -m slv_dashboard.analogs.report
-   python -m slv_dashboard.export
+   python -m slv_dashboard.export          # SLV by default; add --instrument gld|iau|silver|gold for another
    ```
    `analogs.report` takes a few minutes (walk-forward backtest); run it in the background if your tools allow.
-   If `data/cache/analog_backtest_13w.csv` was already written today, you can skip it.
+   If `data/cache/analog_backtest_slv_13w.csv` was already written today, you can skip it.
    A source that prints `FAILED` is not fatal. Mention it in your reply.
 
 2. **Read the inputs.** Read `reports/<date>/snapshot.json` and `reports/<date>/brief.md`, plus the top ~40 rows

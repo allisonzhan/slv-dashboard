@@ -9,18 +9,23 @@ the reason in words, so a pitch can show its working:
   valuation    fair-value z-score (cheap is bullish)
   positioning  managed-money percentile (crowded short is bullish)
   macro        13-week change in real yields and the dollar (falling is bullish)
-  curve        backwardation / lease-rate spike (tight metal is bullish)
+  curve        backwardation / lease-rate spike (tight metal is bullish);
+               silver only, since the gold curve isn't tracked
 
-The plan turns the stance into an instrument, entry, stop, targets and size.
+The plan turns the stance into a vehicle, entry, stop, targets and size, in
+the chosen instrument's price (SLV by default; see slv_dashboard/instruments.py).
 Stops and targets come from the analogs' adverse/favourable excursions, so
-they reflect how far silver actually moved in similar setups. This is a
-decision aid for club pitches, not investment advice.
+they reflect how far the instrument actually moved in similar setups. This is
+a decision aid for club pitches, not investment advice.
 """
 
 from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
+
+from slv_dashboard import instruments
+from slv_dashboard.config import DEFAULT_INSTRUMENT
 
 LENSES = ["analogs", "setups", "valuation", "positioning", "macro", "curve"]
 
@@ -126,15 +131,19 @@ def score_curve(curve: pd.DataFrame | None) -> Score:
 
 
 def build_scorecard(*, outcomes=None, backtest_has_edge=False, scan=None, fv=None, features: pd.Series | None = None,
-                    curve=None) -> Scorecard:
+                    curve=None, metal: str = "silver") -> Scorecard:
     f = features if features is not None else pd.Series(dtype=float)
+    if metal != "silver":
+        curve_score = Score("curve", 0, "Not tracked for gold (silver futures curve only)")
+    else:
+        curve_score = score_curve(curve)
     return Scorecard([
         score_analogs(outcomes, backtest_has_edge),
         score_setups(scan),
         score_valuation(fv),
         score_positioning(f.get("mm_pctile")),
         score_macro(f.get("ry_chg_13w"), f.get("usd_ret_13w")),
-        score_curve(curve),
+        curve_score,
     ])
 
 
@@ -153,25 +162,36 @@ class TradePlan:
     invalidation: list[str] = field(default_factory=list)
 
 
-def suggest_instrument(stance: str, iv: float | None, realised_vol: float | None, gsr_pctile: float | None) -> tuple[str, str]:
-    """Pick the vehicle from the view and whether options are cheap or rich vs. what analogs realised."""
+def suggest_instrument(stance: str, iv: float | None, realised_vol: float | None, gsr_pctile: float | None,
+                       instrument: str = DEFAULT_INSTRUMENT) -> tuple[str, str]:
+    """Pick the vehicle from the view and whether options are cheap or rich vs. what analogs realised.
+
+    Names follow the chosen instrument: its own ETF (e.g. IAU) or the metal's
+    main ETF for a futures pick, the metal's futures contract, and the ETF
+    whose options are liquid (SLV for silver, GLD for gold).
+    """
+    inst = instruments.get(instrument)
+    etf = instrument.upper() if inst.kind == "etf" else instruments.VEHICLES[inst.metal]["etf"]
+    fut = instruments.VEHICLES[inst.metal]["futures"]
+    opt = inst.options
     iv_note = ""
     cheap = rich = False
     if iv is not None and realised_vol is not None and pd.notna(iv) and pd.notna(realised_vol):
         cheap, rich = iv < realised_vol * 0.95, iv > realised_vol * 1.05
-        iv_note = f" SLV IV {iv:.0%} vs. analog realised {realised_vol:.0%}."
+        iv_note = f" {opt} IV {iv:.0%} vs. analog realised {realised_vol:.0%}."
     if stance == "bullish":
         if cheap:
-            return "SLV call spread (~30-60 days)", "Options are cheap vs. how far silver moved in similar setups." + iv_note
+            return (f"{opt} call spread (~30-60 days)",
+                    f"Options are cheap vs. how far {inst.metal} moved in similar setups." + iv_note)
         if rich:
-            return "Long SLV (or SI futures) with a hard stop", "Options are rich, so own the metal and use a stop." + iv_note
-        return "Long SLV with a stop, or a call spread", "No strong options edge either way." + iv_note
+            return f"Long {etf} (or {fut} futures) with a hard stop", "Options are rich, so own the metal and use a stop." + iv_note
+        return f"Long {etf} with a stop, or a call spread", "No strong options edge either way." + iv_note
     if stance == "bearish":
         if cheap:
-            return "SLV put spread (~30-60 days)", "Defined-risk downside; options are cheap." + iv_note
+            return f"{opt} put spread (~30-60 days)", "Defined-risk downside; options are cheap." + iv_note
         if rich:
-            return "Short SI futures or SLV bear call spread", "Options are rich: sell premium against the view." + iv_note
-        return "Short SLV with a stop, or a put spread", "No strong options edge either way." + iv_note
+            return f"Short {fut} futures or {opt} bear call spread", "Options are rich: sell premium against the view." + iv_note
+        return f"Short {etf} with a stop, or a put spread", "No strong options edge either way." + iv_note
     if gsr_pctile is not None and pd.notna(gsr_pctile) and (gsr_pctile > 0.9 or gsr_pctile < 0.1):
         side = "long silver / short gold" if gsr_pctile > 0.9 else "long gold / short silver"
         return f"Relative value: {side} (gold/silver ratio pair)", (
@@ -180,7 +200,8 @@ def suggest_instrument(stance: str, iv: float | None, realised_vol: float | None
 
 
 def plan(scorecard: Scorecard, outcomes: pd.DataFrame | None, price: float, *, horizon_weeks: int = 13,
-         risk_pct: float = 1.0, iv: float | None = None, gsr_pctile: float | None = None) -> TradePlan:
+         risk_pct: float = 1.0, iv: float | None = None, gsr_pctile: float | None = None,
+         instrument: str = DEFAULT_INSTRUMENT) -> TradePlan:
     """Entry, stop, targets and size for the scorecard's stance.
 
     Long: stop at the analogs' worst-quartile adverse move, targets at the
@@ -190,9 +211,9 @@ def plan(scorecard: Scorecard, outcomes: pd.DataFrame | None, price: float, *, h
     stance = scorecard.stance
     o = outcomes.loc[horizon_weeks] if outcomes is not None and horizon_weeks in outcomes.index else None
     realised = float(o["fwd_vol_median"]) if o is not None else None
-    instrument, rationale = suggest_instrument(stance, iv, realised, gsr_pctile)
+    vehicle, rationale = suggest_instrument(stance, iv, realised, gsr_pctile, instrument)
     if o is None or stance == "neutral":
-        return TradePlan(stance, instrument, rationale, price, np.nan, [], horizon_weeks, risk_pct, 0.0, np.nan,
+        return TradePlan(stance, vehicle, rationale, price, np.nan, [], horizon_weeks, risk_pct, 0.0, np.nan,
                          invalidation_triggers(scorecard))
     if stance == "bullish":
         stop = price * (1 + min(o["mae_q25"], -0.03))
@@ -203,7 +224,7 @@ def plan(scorecard: Scorecard, outcomes: pd.DataFrame | None, price: float, *, h
         targets = [price * (1 + o["mae_median"]), price * (1 + o["mae_q25"])]
     stop_dist = abs(price - stop) / price
     reward = abs(targets[0] - price) / price
-    return TradePlan(stance, instrument, rationale, price, stop, targets, horizon_weeks, risk_pct,
+    return TradePlan(stance, vehicle, rationale, price, stop, targets, horizon_weeks, risk_pct,
                      position_pct_of_book=risk_pct / 100 / stop_dist if stop_dist > 0 else 0.0,
                      reward_risk=reward / stop_dist if stop_dist > 0 else np.nan,
                      invalidation=invalidation_triggers(scorecard))
@@ -221,13 +242,14 @@ def invalidation_triggers(scorecard: Scorecard) -> list[str]:
 
 
 def pitch_markdown(sc: Scorecard, tp: TradePlan, *, as_of: pd.Timestamp, analog_lines: list[str],
-                   catalysts: pd.DataFrame | None = None, backtest_verdict: str = "") -> str:
+                   catalysts: pd.DataFrame | None = None, backtest_verdict: str = "",
+                   instrument: str = DEFAULT_INSTRUMENT) -> str:
     """Pre-filled monthly pitch skeleton; the narrative sections are left for the analyst (or the agent)."""
     def money(x):
         return "–" if pd.isna(x) else f"${x:,.2f}"
 
     lines = [
-        f"# Silver trade pitch: {as_of:%B %Y}",
+        f"# {instruments.get(instrument).label} trade pitch: {as_of:%B %Y}",
         "",
         f"**Stance:** {tp.stance.upper()} (scorecard {sc.total:+d} of ±12)  ",
         f"**Vehicle:** {tp.instrument}  ",

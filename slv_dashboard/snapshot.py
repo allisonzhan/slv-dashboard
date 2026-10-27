@@ -15,16 +15,16 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from slv_dashboard import catalysts
+from slv_dashboard import catalysts, instruments
 from slv_dashboard.analogs import backtest, engine, setups
-from slv_dashboard.config import CACHE_DIR
+from slv_dashboard.config import CACHE_DIR, DEFAULT_INSTRUMENT
 from slv_dashboard.dashboard import data as dd
 from slv_dashboard.data import cache, news
 from slv_dashboard.models import alerts, trade, valuation
 
 PATH = CACHE_DIR / "snapshot.json"
-SCHEMA_VERSION = 1
-REQUIRED_KEYS = ["schema_version", "as_of", "headline", "what_changed", "regime", "alerts", "analogs", "backtest",
+SCHEMA_VERSION = 2   # 2: instrument-aware (headline.price instead of headline.silver)
+REQUIRED_KEYS = ["schema_version", "as_of", "instrument", "headline", "what_changed", "regime", "alerts", "analogs", "backtest",
                  "setups_live", "valuation", "positioning", "curve", "options", "scorecard", "trade_plan",
                  "catalysts", "news"]
 
@@ -46,29 +46,34 @@ def _clean(x):
     return x
 
 
-def build(today: date | None = None) -> dict:
+def build(today: date | None = None, instrument: str = DEFAULT_INSTRUMENT) -> dict:
     data = dd.load()
     daily, long_daily = data.daily, data.long_daily
     through = long_daily.index.max()
 
-    ctx = engine.AnalogContext.from_daily(long_daily, "silver")
+    inst = instruments.get(instrument)
+    px = instruments.price(long_daily, instrument)
+    ctx = engine.AnalogContext.from_daily(long_daily, instrument)
     res = engine.find(ctx)
     scan = setups.scan(ctx)
-    fv, gsr_b = valuation.fair_value(long_daily), valuation.gsr_bands(long_daily)
+    fv, gsr_b = valuation.fair_value(long_daily, instrument), valuation.gsr_bands(long_daily)
     feats = ctx.weekly.iloc[-1]
-    verdicts = {h: backtest.verdict(backtest.score(bt)) for h, bt in data.backtests.items()}
+    bt_key, bts = data.backtest_for(instrument)
+    verdicts = {h: backtest.verdict(backtest.score(bt)) for h, bt in bts.items()}
+    opts = data.options_for(instrument)
+    curve = data.curve if inst.metal == "silver" else None
 
     active = alerts.all_alerts(
         daily, data.rule[52]["regime"], data.markov["regime"] if data.markov is not None else None,
         data.betas[52], float(data.full_betas["copper_ret"]), 52,
-        curve=data.curve, setup_scan=scan, analog_outcomes=res.outcomes if res is not None else None)
+        curve=curve, setup_scan=scan, analog_outcomes=res.outcomes if res is not None else None)
 
     card = trade.build_scorecard(outcomes=res.outcomes if res is not None else None,
                                  backtest_has_edge=verdicts.get(13, "").startswith("Useful"),
-                                 scan=scan, fv=fv, features=feats, curve=data.curve)
-    iv = float(data.options["atm_iv"].iloc[-1]) if data.options is not None and not data.options.empty else None
-    tp = trade.plan(card, res.outcomes if res is not None else None, float(daily["silver"].iloc[-1]),
-                    iv=iv, gsr_pctile=float(gsr_b["pctile"].iloc[-1]))
+                                 scan=scan, fv=fv, features=feats, curve=curve, metal=inst.metal)
+    iv = float(opts["atm_iv"].iloc[-1]) if opts is not None else None
+    tp = trade.plan(card, res.outcomes if res is not None else None, float(px.iloc[-1]),
+                    iv=iv, gsr_pctile=float(gsr_b["pctile"].iloc[-1]), instrument=instrument)
 
     analogs = None
     if res is not None:
@@ -83,7 +88,8 @@ def build(today: date | None = None) -> dict:
         }
 
     live = scan[scan["live"] & (scan["horizon_weeks"] == 13)] if not scan.empty else scan
-    mm = daily["mm_net_pct_oi"].dropna() if "mm_net_pct_oi" in daily else pd.Series(dtype=float)
+    cot_col = "mm_net_pct_oi" if inst.metal == "silver" else "mm_net_pct_oi_gold"
+    mm = daily[cot_col].dropna() if cot_col in daily else pd.Series(dtype=float)
     mm_reports = mm[mm.ne(mm.shift())]
     rule = data.rule[52].iloc[-1]
     news_df = cache.load_table(news.NAME)
@@ -91,15 +97,18 @@ def build(today: date | None = None) -> dict:
     snap = {
         "schema_version": SCHEMA_VERSION,
         "as_of": through,
+        "instrument": {"key": instrument, "label": inst.label, "metal": inst.metal, "kind": inst.kind,
+                       "unit": inst.unit, "options": inst.options, "backtest_from": bt_key},
         "headline": {
+            "price": px.iloc[-1],
+            "price_1w_change": dd.change(px, 5),
+            "price_4w_change": dd.change(px, 20),
             "silver": daily["silver"].iloc[-1],
-            "silver_1w_change": dd.change(daily["silver"], 5),
-            "silver_4w_change": dd.change(daily["silver"], 20),
             "gold_silver_ratio": daily["gold_silver_ratio"].iloc[-1],
             "stance": card.stance,
             "score": card.total,
         },
-        "what_changed": dd.weekly_table(daily).reset_index().to_dict(orient="records"),
+        "what_changed": dd.weekly_table(daily, instrument).reset_index().to_dict(orient="records"),
         "regime": {
             "monetary_industrial_52w": rule["regime"], "copper_share_pctile": rule["share_pctile"],
             "volatility": data.markov["regime"].iloc[-1] if data.markov is not None else None,
@@ -120,16 +129,17 @@ def build(today: date | None = None) -> dict:
             "gsr_p10": gsr_b["p10"].iloc[-1], "gsr_p50": gsr_b["p50"].iloc[-1], "gsr_p90": gsr_b["p90"].iloc[-1],
         },
         "positioning": {
+            "market": f"COMEX {inst.metal}",
             "mm_net_pct_oi": mm_reports.iloc[-1] if len(mm_reports) else None,
             "change_vs_prior_report": dd.change(mm_reports, 1),
             "pctile_history": feats.get("mm_pctile"),
             "released": mm_reports.index[-1] if len(mm_reports) else None,
         },
-        "curve": data.curve.dropna(subset=["front", "next"]).iloc[-1][
+        "curve": curve.dropna(subset=["front", "next"]).iloc[-1][
             ["front", "next", "spread", "implied_financing_pct", "implied_lease_pct", "backwardation",
-             "front_contract", "next_contract"]].to_dict() if data.curve is not None and not data.curve.empty else None,
-        "options": (data.options.iloc[-1].to_dict() | {"as_of": data.options.index[-1]})
-        if data.options is not None and not data.options.empty else None,
+             "front_contract", "next_contract"]].to_dict() if curve is not None and not curve.empty else None,
+        "options": (opts.iloc[-1].to_dict() | {"as_of": opts.index[-1], "ticker": inst.options})
+        if opts is not None else None,
         "scorecard": [{"lens": s.lens, "score": s.score, "reason": s.reason} for s in card.scores],
         "trade_plan": {k: v for k, v in vars(tp).items()},
         "catalysts": catalysts.upcoming(today, days=14).to_dict(orient="records"),
@@ -138,17 +148,24 @@ def build(today: date | None = None) -> dict:
     return _clean(snap)
 
 
-def write(snap: dict | None = None) -> dict:
-    snap = snap or build()
-    PATH.parent.mkdir(parents=True, exist_ok=True)
-    PATH.write_text(json.dumps(snap, indent=2), encoding="utf-8")
+def write(snap: dict | None = None, instrument: str = DEFAULT_INSTRUMENT) -> dict:
+    """Build the snapshot; only the default instrument's goes to data/cache/snapshot.json.
+
+    Other instruments' snapshots live only in their report folder, so the
+    published snapshot the agent reads stays the club's default (SLV).
+    """
+    snap = snap or build(instrument=instrument)
+    if snap.get("instrument", {}).get("key", DEFAULT_INSTRUMENT) == DEFAULT_INSTRUMENT:
+        PATH.parent.mkdir(parents=True, exist_ok=True)
+        PATH.write_text(json.dumps(snap, indent=2), encoding="utf-8")
     return snap
 
 
 def main() -> None:
     snap = write()
     h = snap["headline"]
-    print(f"Wrote {PATH} (as of {snap['as_of']}): silver {h['silver']:.2f}, stance {h['stance']} ({h['score']:+d}), "
+    print(f"Wrote {PATH} (as of {snap['as_of']}): {snap['instrument']['key'].upper()} {h['price']:.2f}, "
+          f"stance {h['stance']} ({h['score']:+d}), "
           f"{len(snap['alerts'])} alerts, {len(snap['setups_live'])} live setups")
 
 

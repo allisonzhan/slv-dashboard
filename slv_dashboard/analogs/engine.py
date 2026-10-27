@@ -70,7 +70,8 @@ class AnalogContext:
     def __init__(self, daily_price: pd.Series, weekly: pd.DataFrame,
                  horizons: list[int] = ANALOG_HORIZONS_WEEKS, shape_days: int = ANALOG_SHAPE_DAYS):
         self.price = daily_price.dropna()
-        self.weekly = weekly.loc[weekly.index.isin(self.price.index)]
+        self.weekly = weekly.loc[weekly.index.isin(self.price.index)].copy()
+        self.weekly.attrs = dict(weekly.attrs)   # keeps the target's metal for setups
         self.horizons = horizons
         self.shape_days = shape_days
         self.pos = self.price.index.get_indexer(self.weekly.index)

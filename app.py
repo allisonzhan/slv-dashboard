@@ -3,15 +3,15 @@
 import pandas as pd
 import streamlit as st
 
-from slv_dashboard import catalysts, export
+from slv_dashboard import catalysts, export, instruments
 from slv_dashboard.analogs import backtest, engine, setups
 from slv_dashboard.analogs import features as feat
-from slv_dashboard.config import ANALOG_HORIZONS_WEEKS, ANALOG_K, REGRESSION_WINDOWS_WEEKS
+from slv_dashboard.config import ANALOG_HORIZONS_WEEKS, ANALOG_K, DEFAULT_INSTRUMENT, REGRESSION_WINDOWS_WEEKS
 from slv_dashboard.dashboard import charts
 from slv_dashboard.dashboard import data as dd
 from slv_dashboard.models import alerts, trade, valuation
 
-st.set_page_config(page_title="Silver Dashboard", layout="wide")
+st.set_page_config(page_title="Metals Dashboard", layout="wide")
 
 DRIVER_LABELS = {
     "real_yield_chg": "Real yield (per 1pp)",
@@ -37,9 +37,9 @@ def setup_scan(target: str, through: pd.Timestamp) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner="Fitting fair value")
-def fair_value(through: pd.Timestamp) -> tuple[pd.DataFrame, pd.DataFrame]:
+def fair_value(instrument: str, through: pd.Timestamp) -> tuple[pd.DataFrame, pd.DataFrame]:
     d = load_data().long_daily
-    return valuation.fair_value(d), valuation.gsr_bands(d)
+    return valuation.fair_value(d, instrument), valuation.gsr_bands(d)
 
 
 def refresh_everything() -> None:
@@ -68,7 +68,9 @@ def chart(fig, table, key: str) -> None:
 
 
 # --- Header and filter row ---------------------------------------------------
-st.title("Silver Dashboard")
+ik = st.session_state.get("instrument", DEFAULT_INSTRUMENT)   # instrument key, set by the picker below
+inst = instruments.get(ik)
+st.title(f"{inst.metal.title()} Dashboard")
 st.caption("COINS metals division · weekly brief, historical analogs, drivers and fundamentals")
 
 try:
@@ -83,7 +85,11 @@ except dd.MissingCache as exc:
 t = charts.theme_for(st.context.theme.type)
 daily = data.daily
 
-f1, f2, f3 = st.columns([3, 2, 1], vertical_alignment="bottom")
+f0, f1, f2, f3 = st.columns([2, 3, 2, 1], vertical_alignment="bottom")
+f0.selectbox("Instrument", list(instruments.INSTRUMENTS), index=list(instruments.INSTRUMENTS).index(DEFAULT_INSTRUMENT),
+             format_func=lambda k: instruments.INSTRUMENTS[k].label, key="instrument",
+             help="Drives the price tile, analogs, valuation, trade builder and brief. Gold instruments use gold "
+                  "positioning and gold fair-value drivers.")
 range_key = f1.segmented_control("Range", list(dd.RANGES), default="5Y", key="range") or "5Y"
 window = f2.segmented_control("Regression window", REGRESSION_WINDOWS_WEEKS, default=52,
                               format_func=lambda w: f"{w} weeks", key="window") or 52
@@ -91,40 +97,45 @@ if f3.button("Refresh data", width="stretch"):
     refresh_everything()
     st.rerun()
 
-st.caption(f"Data through {daily.index.max():%b %d, %Y}")
+px_long = instruments.price(data.long_daily, ik)       # instrument price, back-extended before ETF launch
+px = px_long[px_long.index >= daily.index.min()]
+launched = instruments.launch(data.long_daily, ik)
+cot_col = "mm_net_pct_oi" if inst.metal == "silver" else "mm_net_pct_oi_gold"
+st.caption(f"Data through {daily.index.max():%b %d, %Y} · {inst.label}"
+           + (f" (before {launched:%b %Y}, analogs use {inst.proxy} futures returns)" if launched is not None else ""))
 
 # --- Stat tiles ----------------------------------------------------------------
 rule_now = data.rule[window].iloc[-1]
 k1, k2, k3, k4, k5 = st.columns(5)
-silver_chg = dd.change(daily["silver"], 5)
-k1.metric("Silver ($/oz)", f"{daily['silver'].iloc[-1]:,.2f}",
-          f"{silver_chg:+.2f} 1w" if silver_chg is not None else None)
+px_chg = dd.change(px, 5)
+k1.metric(f"{ik.upper() if inst.kind == 'etf' else inst.metal.title()} ({inst.unit})", f"{px.iloc[-1]:,.2f}",
+          f"{px_chg:+.2f} 1w" if px_chg is not None else None)
 ratio_chg = dd.change(daily["gold_silver_ratio"], 5)
 k2.metric("Gold/silver ratio", f"{daily['gold_silver_ratio'].iloc[-1]:.1f}",
           f"{ratio_chg:+.1f} 1w" if ratio_chg is not None else None, delta_color="off")
-if "mm_net_pct_oi" in daily:
-    pos = daily["mm_net_pct_oi"].dropna()
+if cot_col in daily:
+    pos = daily[cot_col].dropna()
     pos_chg = dd.change(pos.drop_duplicates(), 1)
-    k3.metric("Managed money net (% OI)", f"{pos.iloc[-1]:.1f}%",
+    k3.metric(f"{inst.metal.title()} managed money (% OI)", f"{pos.iloc[-1]:.1f}%",
               f"{pos_chg:+.1f} pts vs prior report" if pos_chg is not None else None, delta_color="off")
-k4.metric(f"Regime ({window}w rule)", rule_now["regime"].title(),
+k4.metric(f"Silver regime ({window}w rule)", rule_now["regime"].title(),
           f"copper share {rule_now['share_pctile']:.0%} pctile", delta_color="off",
           help="Copper's share of explanatory power vs. gold, ranked against history. "
                "Top third = industrial, bottom third = monetary.")
 if data.markov is not None:
     mk = data.markov.iloc[-1]
-    k5.metric("Volatility regime (Markov)", mk["regime"].title(), f"p(stressed) {mk['p_stressed']:.0%}",
+    k5.metric("Silver vol regime (Markov)", mk["regime"].title(), f"p(stressed) {mk['p_stressed']:.0%}",
               delta_color="off", help="Two-regime Markov-switching model on weekly returns.")
 
 # --- Alerts --------------------------------------------------------------------------
 through = data.long_daily.index.max()
-silver_now = engine.find(analog_context("silver", through))
+now_res = engine.find(analog_context(ik, through))
 active = alerts.all_alerts(
     daily, data.rule[window]["regime"],
     data.markov["regime"] if data.markov is not None else None,
     data.betas[window], float(data.full_betas["copper_ret"]), window,
-    curve=data.curve, setup_scan=setup_scan("silver", through),
-    analog_outcomes=silver_now.outcomes if silver_now is not None else None,
+    curve=data.curve if inst.metal == "silver" else None, setup_scan=setup_scan(ik, through),
+    analog_outcomes=now_res.outcomes if now_res is not None else None,
 )
 
 
@@ -140,7 +151,10 @@ def show_alerts() -> None:
 
 tab_brief, tab_analogs, tab_macro, tab_supply, tab_pos, tab_val, tab_trade = st.tabs(
     ["Weekly Brief", "Technicals & Analogs", "Macro", "Supply & Flows", "Positioning", "Valuation", "Trade Builder"])
-fv, gsr_b = fair_value(through)
+fv, gsr_b = fair_value(ik, through)
+bt_key, bts = data.backtest_for(ik)
+bt_note = "" if bt_key in (None, ik) else f" ({instruments.get(bt_key).label} backtest, same metal)"
+opts_now = data.options_for(ik)
 
 # === Weekly Brief =====================================================================
 with tab_brief:
@@ -148,12 +162,12 @@ with tab_brief:
     b1, b2 = st.columns([3, 2])
     with b1:
         st.subheader("What changed this week")
-        st.dataframe(dd.weekly_table(daily), width="stretch")
+        st.dataframe(dd.weekly_table(daily, ik), width="stretch")
         st.caption("1w/4w change in the series' own units (percentage points for yields and positioning). "
                    "Percentile = where today's level sits since 2010.")
     with b2:
-        st.subheader("Analog read (silver futures)")
-        res_s = silver_now
+        st.subheader(f"Analog read ({inst.label})")
+        res_s = now_res
         if res_s is not None:
             for h in (4, 13):
                 o = res_s.outcomes.loc[h]
@@ -163,9 +177,9 @@ with tab_brief:
             top = res_s.matches.head(3)
             st.caption("Closest past setups: " + "; ".join(
                 f"{d:%b %Y}" + (f" ({r['episode']})" if r["episode"] else "") for d, r in top.iterrows()))
-        if 13 in data.backtests:
-            st.caption(f"Track record: {backtest.verdict(backtest.score(data.backtests[13]))}")
-        live = setup_scan("silver", through)
+        if 13 in bts:
+            st.caption(f"Track record{bt_note}: {backtest.verdict(backtest.score(bts[13]))}")
+        live = setup_scan(ik, through)
         live = live[live["live"] & (live["horizon_weeks"] == 13)] if not live.empty else live
         st.subheader("Live setups")
         if live.empty:
@@ -185,15 +199,15 @@ with tab_brief:
                "sections (bottom line, news, talking points) are written by the weekly-brief agent in Claude Code.")
     if st.button("Export brief and chart pack"):
         with st.spinner("Writing the brief and rendering charts"):
-            out = export.export()
+            out = export.export(instrument=ik)
         st.success(f"Written to {out}")
-    reports = sorted(export.REPORTS_DIR.glob("20*")) if export.REPORTS_DIR.exists() else []
-    if reports and (reports[-1] / "brief.md").exists():
-        latest = reports[-1] / "brief.md"
-        with st.expander(f"Latest brief ({reports[-1].name})"):
+    latest_dir = export.latest_report(ik) if export.REPORTS_DIR.exists() else None
+    if latest_dir is not None and (latest_dir / "brief.md").exists():
+        latest = latest_dir / "brief.md"
+        with st.expander(f"Latest {ik.upper()} brief ({latest_dir.name})"):
             text = export.AGENT_RE.sub(lambda m: m.group(2), latest.read_text(encoding="utf-8"))
             st.markdown(text.replace("$", "\\$"))   # \$: pairs of $ would render as math
-        st.download_button("Download brief.md", latest.read_bytes(), file_name=f"silver_brief_{reports[-1].name}.md")
+        st.download_button("Download brief.md", latest.read_bytes(), file_name=f"{ik}_brief_{latest_dir.name[:10]}.md")
 
 # === Technicals & Analogs ============================================================
 with tab_analogs:
@@ -201,7 +215,8 @@ with tab_analogs:
                "the last 60 days), and what happened next. Every number sits next to the base rate: the "
                "edge is the difference.")
     a1, a2, a3, a4 = st.columns([2, 3, 1, 1], vertical_alignment="bottom")
-    target = a1.selectbox("Series", list(feat.TARGETS), format_func=feat.TARGETS.get, key="an_target")
+    target = a1.selectbox("Series", list(feat.TARGETS), index=list(feat.TARGETS).index(ik),
+                          format_func=feat.TARGETS.get, key=f"an_target_{ik}")
     groups = a2.multiselect("Match on", list(feat.GROUPS), default=list(feat.GROUPS), key="an_groups",
                             format_func=str.title)
     k = a3.number_input("Analogs", 5, 50, ANALOG_K, step=5, key="an_k")
@@ -231,7 +246,7 @@ with tab_analogs:
         m4.metric("Typical drawdown (MAE)", pct(o["mae_median"]), f"worst quartile {o['mae_q25']:+.1%}",
                   delta_color="off", help="Median max adverse move inside the window: a starting point for stops.")
         m5.metric("Forward vol", f"{o['fwd_vol_median']:.0%}", f"base {o['base_fwd_vol_median']:.0%}",
-                  delta_color="off", help="Median realised vol after the analogs: compare with SLV implied vol.")
+                  delta_color="off", help=f"Median realised vol after the analogs: compare with {inst.options} implied vol.")
         st.caption(f"{len(res.matches)} analogs from {res.n_candidates} candidate weeks · matched on "
                    f"{len(res.features_used)} features as of {res.query_date:%b %d, %Y}")
 
@@ -277,16 +292,20 @@ with tab_analogs:
                    "Few episodes = anecdote, not evidence.")
 
     st.subheader("Track record (walk-forward)")
-    if target != "silver":
-        st.caption("The nightly backtest covers silver futures with the default settings.")
-    for h, bt in data.backtests.items():
+    t_key, t_bts = data.backtest_for(target) if target in instruments.INSTRUMENTS else (None, {})
+    if t_key is None:
+        st.caption("The nightly backtest covers " + ", ".join(k.upper() for k, v in data.backtests.items() if v)
+                   + " with the default settings; ratios aren't backtested.")
+    elif t_key != target:
+        st.caption(f"Showing the {instruments.get(t_key).label} backtest (same metal, default settings).")
+    for h, bt in t_bts.items():
         sc_ = backtest.score(bt)
         st.markdown(f"**{h} weeks** · {backtest.verdict(sc_)}")
         st.caption(f"{sc_['n']} weekly calls since {bt.index.min():%Y}: direction right "
                    f"{sc_['direction_accuracy']:.0%} vs. {sc_['always_up_accuracy']:.0%} for always-long; "
                    f"avg {h}w return {sc_['mean_when_analogs_up']:+.1%} when analogs said up, "
                    f"{sc_['mean_when_analogs_down']:+.1%} when they said down.")
-    if not data.backtests:
+    if not any(data.backtests.values()):
         st.caption("Run `python -m slv_dashboard.analogs.report` to compute the backtest.")
 
     st.subheader("Price, moving averages and RSI")
@@ -297,10 +316,10 @@ with tab_analogs:
 with tab_macro:
     c1, c2 = st.columns(2)
     with c1:
-        st.subheader("Silver price")
-        s = dd.clip(daily["silver"], range_key)
-        chart(charts.line({"Silver": s}, t, y_title="$/oz"), s.to_frame(), "price")
-        st.caption(dd.what_changed(daily["silver"]))
+        st.subheader(f"{inst.label} price")
+        s = dd.clip(px, range_key)
+        chart(charts.line({inst.label: s}, t, y_title=inst.unit), s.to_frame(), "price")
+        st.caption(dd.what_changed(px))
     with c2:
         st.subheader("Gold/silver ratio")
         r = dd.clip(daily["gold_silver_ratio"], range_key)
@@ -379,10 +398,10 @@ with tab_supply:
     else:
         st.caption("No curve data yet: press Refresh data.")
 
-    st.subheader("SLV options: implied vs. what the analogs realised")
-    if data.options is not None and not data.options.empty:
-        op = data.options.iloc[-1]
-        res_vol = silver_now.outcomes.loc[4, "fwd_vol_median"] if silver_now is not None else float("nan")
+    st.subheader(f"{inst.options} options: implied vs. what the analogs realised")
+    if opts_now is not None:
+        op = opts_now.iloc[-1]
+        res_vol = now_res.outcomes.loc[4, "fwd_vol_median"] if now_res is not None else float("nan")
         o1, o2, o3, o4 = st.columns(4)
         o1.metric(f"ATM IV ({op['days']:.0f}d)", f"{op['atm_iv']:.0%}", delta_color="off")
         o2.metric("Analog realised vol (4w)", f"{res_vol:.0%}",
@@ -391,7 +410,7 @@ with tab_supply:
         o3.metric("Skew (10% OTM call − put)", f"{op['skew_call_minus_put']:+.1%}", delta_color="off",
                   help="Positive = upside calls bid over puts: the market is paying for a squeeze.")
         o4.metric("1σ move to expiry", f"±{op['expected_move_pct']:.1%}", delta_color="off")
-        st.caption(f"As of {data.options.index[-1]:%b %d}, expiry {op['expiry']}. IV is backed out from bid/ask "
+        st.caption(f"As of {opts_now.index[-1]:%b %d}, expiry {op['expiry']}. IV is backed out from bid/ask "
                    "mids, so it only updates when the refresh runs during market hours.")
     else:
         st.caption("No option snapshot yet: run the refresh during US market hours.")
@@ -415,24 +434,31 @@ with tab_supply:
 
 # === Positioning ======================================================================
 with tab_pos:
-    st.subheader("CFTC managed-money positioning")
-    if "mm_net_pct_oi" in daily:
-        p = dd.clip(daily["mm_net_pct_oi"].dropna(), range_key)
+    st.subheader(f"CFTC managed-money positioning: COMEX {inst.metal}")
+    if cot_col in daily:
+        sfx = "" if inst.metal == "silver" else "_gold"
+        cot_cols = [f"{c}{sfx}" for c in ("mm_long", "mm_short", "mm_net", "mm_net_pct_oi")]
+        p = dd.clip(daily[cot_col].dropna(), range_key)
         chart(charts.line({"Net long, % of open interest": p}, t, y_title="% of OI", hover_format=".1f", ref=0),
-              daily[["mm_long", "mm_short", "mm_net", "mm_net_pct_oi"]].drop_duplicates().pipe(dd.clip, range_key),
-              "cot")
+              daily[cot_cols].drop_duplicates().pipe(dd.clip, range_key), "cot")
         st.caption("Shown from each Friday release date (positions as of the prior Tuesday). "
-                   + dd.what_changed(daily["mm_net_pct_oi"].drop_duplicates(), ".1f", periods=1))
+                   + dd.what_changed(daily[cot_col].drop_duplicates(), ".1f", periods=1))
+    else:
+        st.caption(f"No {inst.metal} COT data cached yet: press Refresh data.")
 
 # === Valuation ========================================================================
 with tab_val:
-    st.subheader("Silver vs. what its drivers imply")
+    st.subheader(f"{inst.label} vs. what {inst.metal}'s drivers imply")
     st.markdown(f"**{valuation.read(fv)}**")
-    chart(charts.fair_value_chart(dd.clip(fv, range_key), t),
-          dd.clip(fv[["silver", "fair_value", "residual_pct", "z", "r2"]], range_key), "fv")
-    st.caption("Rolling 3-year regression of log silver on log gold, the 10Y real yield, the log dollar and log "
-               f"copper (weekly levels; latest R² {fv['r2'].iloc[-1]:.2f}). The band is ±1 residual σ. Levels "
-               "relationships drift, so treat this as 'stretched vs. recent relationships', not an anchor.")
+    chart(charts.fair_value_chart(dd.clip(fv, range_key), t, name=inst.label, y_title=inst.unit),
+          dd.clip(fv[["price", "fair_value", "residual_pct", "z", "r2"]], range_key), "fv")
+    driver_names = {"log_gold": "log gold", "real_yield_10y": "the 10Y real yield", "log_dollar": "the log dollar",
+                    "log_copper": "log copper", "breakeven_10y": "10Y breakeven inflation"}
+    st.caption(f"Rolling 3-year regression of log {inst.metal} on "
+               + ", ".join(driver_names[d] for d in fv.attrs["drivers"])
+               + f" (weekly levels; latest R² {fv['r2'].iloc[-1]:.2f}). The band is ±1 residual σ"
+               + (", shown in the ETF's price" if inst.kind == "etf" else "") + ". Levels relationships drift, so "
+               "treat this as 'stretched vs. recent relationships', not an anchor.")
     v1, v2 = st.columns(2)
     with v1:
         st.markdown("**Rich/cheap z-score**")
@@ -447,14 +473,15 @@ with tab_val:
 # === Trade Builder ====================================================================
 with tab_trade:
     st.caption("Every lens scored −2 to +2 with its reasoning, then a trade plan whose stop and targets come from "
-               "how far silver actually moved after similar setups. A decision aid for club pitches, not advice.")
-    bt13 = data.backtests.get(13)
+               f"how far {inst.label} actually moved after similar setups. A decision aid for club pitches, not "
+               "advice.")
+    bt13 = bts.get(13)
     bt_verdict = backtest.verdict(backtest.score(bt13)) if bt13 is not None else ""
-    ctx_now = analog_context("silver", through)
+    ctx_now = analog_context(ik, through)
     card = trade.build_scorecard(
-        outcomes=silver_now.outcomes if silver_now is not None else None,
+        outcomes=now_res.outcomes if now_res is not None else None,
         backtest_has_edge=bt_verdict.startswith("Useful"),
-        scan=setup_scan("silver", through), fv=fv, features=ctx_now.weekly.iloc[-1], curve=data.curve)
+        scan=setup_scan(ik, through), fv=fv, features=ctx_now.weekly.iloc[-1], curve=data.curve, metal=inst.metal)
     s1, s2 = st.columns([3, 2])
     with s1:
         st.subheader("Scorecard")
@@ -465,32 +492,34 @@ with tab_trade:
         tb1, tb2 = st.columns(2)
         risk = tb1.number_input("Risk per trade (% of book)", 0.25, 5.0, 1.0, step=0.25, key="tb_risk")
         hz = tb2.selectbox("Horizon", [4, 13, 26], index=1, format_func=lambda h: f"{h} weeks", key="tb_h")
-    iv_now = float(data.options["atm_iv"].iloc[-1]) if data.options is not None and not data.options.empty else None
-    tp = trade.plan(card, silver_now.outcomes if silver_now is not None else None, float(daily["silver"].iloc[-1]),
-                    horizon_weeks=hz, risk_pct=risk, iv=iv_now, gsr_pctile=float(gsr_b["pctile"].iloc[-1]))
+    iv_now = float(opts_now["atm_iv"].iloc[-1]) if opts_now is not None else None
+    tp = trade.plan(card, now_res.outcomes if now_res is not None else None, float(px.iloc[-1]),
+                    horizon_weeks=hz, risk_pct=risk, iv=iv_now, gsr_pctile=float(gsr_b["pctile"].iloc[-1]),
+                    instrument=ik)
     st.subheader("Trade plan")
     st.markdown(f"**{tp.instrument}**. {tp.rationale}")
     if tp.stance != "neutral":
         p1, p2, p3, p4 = st.columns(4)
-        p1.metric("Entry (SI)", f"${tp.entry:,.2f}")
+        p1.metric(f"Entry ({ik.upper()})", f"${tp.entry:,.2f}")
         p2.metric("Stop", f"${tp.stop:,.2f}", f"{tp.stop / tp.entry - 1:+.1%}", delta_color="off")
         p3.metric("Targets", " / ".join(f"\\${x:,.2f}" for x in tp.targets),  # \$: two $ would render as math
                   f"{tp.reward_risk:.1f}x reward/risk", delta_color="off")
         p4.metric("Size", f"{tp.position_pct_of_book:.0%} of book", f"risks {tp.risk_pct_of_book:.1f}%",
-                  delta_color="off", help="For futures or SLV. For an option spread, risk the premium instead.")
+                  delta_color="off", help="For the ETF or futures. For an option spread, risk the premium instead.")
     st.markdown("**What would make us wrong:** " + "; ".join(tp.invalidation))
 
     analog_lines = []
-    if silver_now is not None:
-        o13 = silver_now.outcomes.loc[13]
-        analog_lines.append(f"{len(silver_now.matches)} closest past setups: 13w median {o13['median']:+.1%} vs. "
+    if now_res is not None:
+        o13 = now_res.outcomes.loc[13]
+        analog_lines.append(f"{len(now_res.matches)} closest past setups: 13w median {o13['median']:+.1%} vs. "
                             f"base {o13['base_median']:+.1%}, up {o13['hit_rate']:.0%} of the time "
                             f"(p {o13['p_value']:.2f})")
         analog_lines += [f"{d:%b %Y}{' (' + r['episode'] + ')' if r['episode'] else ''}: 13w "
-                         f"{r['fwd_13w']:+.1%}" for d, r in silver_now.matches.head(5).iterrows()]
+                         f"{r['fwd_13w']:+.1%}" for d, r in now_res.matches.head(5).iterrows()]
     pitch = trade.pitch_markdown(card, tp, as_of=through, analog_lines=analog_lines,
-                                 catalysts=catalysts.upcoming(days=hz * 7), backtest_verdict=bt_verdict)
+                                 catalysts=catalysts.upcoming(days=hz * 7), backtest_verdict=bt_verdict,
+                                 instrument=ik)
     with st.expander("Monthly pitch draft (markdown)", expanded=False):
         st.markdown(pitch.replace("$", "\\$"))
-    st.download_button("Download pitch draft", pitch, file_name=f"silver_pitch_{through:%Y-%m}.md",
+    st.download_button("Download pitch draft", pitch, file_name=f"{ik}_pitch_{through:%Y-%m}.md",
                        mime="text/markdown")

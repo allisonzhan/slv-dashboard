@@ -1,22 +1,32 @@
 """Compute the current analog read, setup scan and walk-forward backtest, and cache them.
 
-Run: python -m slv_dashboard.analogs.report  (also called by models.report)
+Run: python -m slv_dashboard.analogs.report
+
+The current read and setup scan are for the default instrument (SLV). The
+walk-forward backtest runs for each instrument in ANALOG_BACKTEST_INSTRUMENTS
+(one per metal by default); the dashboard computes current analogs for any
+instrument on the fly, and reuses the same metal's backtest when an
+instrument has none of its own.
 """
 
 import pandas as pd
 
 from slv_dashboard.analogs import backtest, engine, setups
+from slv_dashboard.config import ANALOG_BACKTEST_INSTRUMENTS, DEFAULT_INSTRUMENT
 from slv_dashboard.data import cache, dataset
 
-TARGET = "silver"
 BACKTEST_HORIZONS = [4, 13]
 
 
-def run(target: str = TARGET) -> dict:
+def backtest_name(instrument: str, horizon: int) -> str:
+    return f"analog_backtest_{instrument}_{horizon}w"
+
+
+def run(target: str = DEFAULT_INSTRUMENT, backtest_instruments: list[str] = ANALOG_BACKTEST_INSTRUMENTS) -> dict:
     daily = dataset.build(start=None)
     ctx = engine.AnalogContext.from_daily(daily, target)
     res = engine.find(ctx)
-    out = {"ctx": ctx, "result": res}
+    out = {"ctx": ctx, "result": res, "target": target}
     if res is not None:
         m = res.matches.copy()
         m["context"] = [engine.describe(r) for _, r in m.iterrows()]
@@ -30,10 +40,12 @@ def run(target: str = TARGET) -> dict:
     out["setups"] = scan
 
     scores = {}
-    for h in BACKTEST_HORIZONS:
-        bt = backtest.run(ctx, h)
-        cache.save(f"analog_backtest_{h}w", bt)
-        scores[h] = backtest.score(bt)
+    for key in backtest_instruments:
+        bt_ctx = ctx if key == target else engine.AnalogContext.from_daily(daily, key)
+        for h in BACKTEST_HORIZONS:
+            bt = backtest.run(bt_ctx, h)
+            cache.save(backtest_name(key, h), bt)
+            scores[(key, h)] = backtest.score(bt)
     out["backtest"] = scores
     return out
 
@@ -43,7 +55,7 @@ def print_summary(out: dict) -> None:
     if res is None:
         print("Analogs: not enough history")
         return
-    print(f"Analogs for week of {res.query_date:%Y-%m-%d} ({res.n_candidates} candidate weeks, "
+    print(f"Analogs for {out['target']}, week of {res.query_date:%Y-%m-%d} ({res.n_candidates} candidate weeks, "
           f"{len(res.features_used)} features)")
     for d, r in res.matches.head(10).iterrows():
         ep = f"  [{r['episode']}]" if r["episode"] else ""
@@ -56,8 +68,8 @@ def print_summary(out: dict) -> None:
     live = out["setups"]
     live = live[live["live"]]["setup"].unique() if not live.empty else []
     print("\nLive setups: " + (", ".join(live) if len(live) else "none"))
-    for h, sc in out["backtest"].items():
-        print(f"\nBacktest {h}w ({sc['n']} weeks): {backtest.verdict(sc)}")
+    for (key, h), sc in out["backtest"].items():
+        print(f"\nBacktest {key} {h}w ({sc['n']} weeks): {backtest.verdict(sc)}")
         if sc["n"]:
             print(f"  direction accuracy {sc['direction_accuracy']:.0%} vs base {sc['base_direction_accuracy']:.0%}"
                   f" / always-up {sc['always_up_accuracy']:.0%}")

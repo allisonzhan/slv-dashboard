@@ -1,4 +1,7 @@
-"""SLV option implied volatility: ATM level and skew, one snapshot per refresh.
+"""SLV and GLD option implied volatility: ATM level and skew, one snapshot per refresh.
+
+SLV goes to options.csv and GLD to options_gld.csv. IAU and the futures
+borrow the liquid ETF's IV for their metal (same underlying, deeper chain).
 
 yfinance's own impliedVolatility column is unusable outside market hours
 (placeholders like 0.00001 or 0.5), so IV is backed out here from the
@@ -20,7 +23,13 @@ from scipy.stats import norm
 from slv_dashboard.data import cache
 
 NAME = "options"
+TICKERS = ["SLV", "GLD"]
 TARGET_DAYS = 30
+
+
+def cache_name(ticker: str) -> str:
+    """SLV keeps the original file name; other tickers get a suffix."""
+    return NAME if ticker == "SLV" else f"{NAME}_{ticker.lower()}"
 SKEW_MONEYNESS = 0.10     # compare 10% OTM put vs. 10% OTM call
 
 
@@ -72,9 +81,9 @@ def snapshot(spot: float, calls: pd.DataFrame, puts: pd.DataFrame, days: int, r:
     }
 
 
-def fetch(today: date | None = None) -> pd.DataFrame:
+def fetch(today: date | None = None, ticker: str = "SLV") -> pd.DataFrame:
     today = today or date.today()
-    tk = yf.Ticker("SLV")
+    tk = yf.Ticker(ticker)
     expiries = [date.fromisoformat(e) for e in tk.options]
     exp = min(expiries, key=lambda e: abs((e - today).days - TARGET_DAYS))
     chain = tk.option_chain(exp.isoformat())
@@ -90,7 +99,11 @@ def fetch(today: date | None = None) -> pd.DataFrame:
 
 
 def refresh() -> pd.DataFrame:
-    new = fetch()
-    if new.empty:
-        return cache.load(NAME) if cache.load(NAME) is not None else new
-    return cache.append(NAME, new)
+    """Snapshot every ticker; returns SLV's history (the refresh log reports that one)."""
+    out = {}
+    for ticker in TICKERS:
+        name = cache_name(ticker)
+        new = fetch(ticker=ticker)
+        old = cache.load(name)
+        out[ticker] = (old if old is not None else new) if new.empty else cache.append(name, new)
+    return out["SLV"]
