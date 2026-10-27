@@ -25,6 +25,7 @@ class Setup:
     rule: Callable[[pd.DataFrame], pd.Series]
     view: str            # what the setup is usually read as: bullish / bearish / volatility / event
     min_gap_weeks: int = ANALOG_MIN_GAP_WEEKS   # scheduled events recur faster than the default episode gap
+    metals: tuple[str, ...] = ("silver", "gold")  # instruments whose metal this setup applies to
 
 
 def _gsr_high_turning(w):
@@ -33,7 +34,8 @@ def _gsr_high_turning(w):
 
 SETUPS = [
     Setup("gsr_high_turning", "Gold/silver ratio above 85 and rolling over",
-          "Silver historically cheap vs. gold and starting to catch up", _gsr_high_turning, "bullish"),
+          "Silver historically cheap vs. gold and starting to catch up", _gsr_high_turning, "bullish",
+          metals=("silver",)),
     Setup("crowded_short", "Managed money in bottom 10% of history",
           "Specs are as short as they get: short-covering fuel", lambda w: w["mm_pctile"] < 0.10, "bullish"),
     Setup("crowded_long", "Managed money in top 10% of history",
@@ -54,7 +56,7 @@ SETUPS = [
           lambda w: w["dd_52w"] < -0.25, "bullish"),
     Setup("overextended", "Up 30%+ in 13 weeks with RSI above 70", "Parabolic move, prone to sharp pullbacks",
           lambda w: (w["ret_13w"] > 0.30) & (w["rsi14"] > 70), "bearish"),
-    Setup("fomc_week", "FOMC decision week (2019 on)", "How silver has traded from the week of a Fed decision",
+    Setup("fomc_week", "FOMC decision week (2019 on)", "How the metal has traded from the week of a Fed decision",
           lambda w: catalysts.fomc_week_mask(w.index), "event", min_gap_weeks=1),
 ]
 
@@ -87,8 +89,11 @@ def study(ctx: engine.AnalogContext, mask: pd.Series, min_gap_weeks: int = ANALO
 def scan(ctx: engine.AnalogContext, setups: list[Setup] = SETUPS, live_weeks: int = 1) -> pd.DataFrame:
     """One row per setup per horizon, with whether it's live (fired in the last ``live_weeks``)."""
     w = ctx.weekly
+    metal = w.attrs.get("metal", "silver")
     rows = []
     for s in setups:
+        if metal not in s.metals:
+            continue
         try:
             mask = s.rule(w).fillna(False).astype(bool)
         except KeyError:  # feature not available for this target

@@ -7,7 +7,10 @@ import requests
 
 from slv_dashboard.config import (CACHE_DIR, DATA_SOURCE, HISTORY_START, HTTP_HEADERS, HTTP_TIMEOUT,
                                   PUBLISHED_DATA_URL, REGRESSION_WINDOWS_WEEKS)
-from slv_dashboard.data import cache, dataset
+from slv_dashboard import instruments
+from slv_dashboard.analogs import report as analog_report
+from slv_dashboard.analogs.report import BACKTEST_HORIZONS
+from slv_dashboard.data import cache, dataset, options
 from slv_dashboard.models import drivers
 
 RANGES = {"1Y": 1, "3Y": 3, "5Y": 5, "10Y": 10, "All": None}
@@ -21,9 +24,26 @@ class DashboardData:
     markov: pd.DataFrame | None
     full_betas: pd.Series                   # full-sample macro betas
     long_daily: pd.DataFrame                # all cached history (2000 on), for the analog engine
-    backtests: dict[int, pd.DataFrame]      # horizon (weeks) -> walk-forward analog backtest
+    backtests: dict[str, dict[int, pd.DataFrame]]   # instrument -> horizon (weeks) -> walk-forward backtest
     curve: pd.DataFrame | None              # SI front-next spread and implied lease rate
-    options: pd.DataFrame | None            # SLV ATM IV and skew snapshots
+    options: dict[str, pd.DataFrame]        # option ticker (SLV, GLD) -> ATM IV and skew snapshots
+
+    def backtest_for(self, instrument: str) -> tuple[str | None, dict[int, pd.DataFrame]]:
+        """Backtests for an instrument, else for the backtested instrument on the same metal.
+
+        Returns (instrument actually backtested, {horizon: frame}).
+        """
+        if self.backtests.get(instrument):
+            return instrument, self.backtests[instrument]
+        metal = instruments.get(instrument).metal
+        for key, bts in self.backtests.items():
+            if bts and instruments.get(key).metal == metal:
+                return key, bts
+        return None, {}
+
+    def options_for(self, instrument: str) -> pd.DataFrame | None:
+        df = self.options.get(instruments.get(instrument).options)
+        return df if df is not None and not df.empty else None
 
 
 class MissingCache(Exception):
@@ -66,9 +86,12 @@ def load() -> DashboardData:
             raise MissingCache("python -m slv_dashboard.models.report")
         betas[w], rule[w] = b, r
     full = drivers.full_sample(drivers.weekly_returns(daily), drivers.MACRO).params.drop("const")
-    backtests = {h: bt for h in (4, 13) if (bt := cache.load(f"analog_backtest_{h}w")) is not None and not bt.empty}
+    backtests = {key: {h: bt for h in BACKTEST_HORIZONS
+                       if (bt := cache.load(analog_report.backtest_name(key, h))) is not None and not bt.empty}
+                 for key in instruments.INSTRUMENTS}
+    opts = {t: df for t in options.TICKERS if (df := cache.load(options.cache_name(t))) is not None}
     return DashboardData(daily, betas, rule, cache.load("regime_markov"), full, long_daily, backtests,
-                         cache.load("curve"), cache.load("options"))
+                         cache.load("curve"), opts)
 
 
 def clip(obj, range_key: str):
@@ -125,16 +148,30 @@ WEEKLY_ROWS = [
 ]
 
 
-def weekly_table(daily: pd.DataFrame) -> pd.DataFrame:
+def weekly_rows(instrument: str | None = None) -> list[tuple[str, str, str, str]]:
+    """WEEKLY_ROWS adjusted for the chosen instrument: its own price first, and its metal's positioning."""
+    if instrument is None:
+        return WEEKLY_ROWS
+    inst = instruments.get(instrument)
+    rows = list(WEEKLY_ROWS)
+    if inst.kind == "etf":
+        rows.insert(0, (instrument, f"{instrument.upper()} ($/share)", ",.2f", ""))
+    if inst.metal == "gold":
+        rows = [("mm_net_pct_oi_gold", "Gold managed money net (% OI)", ".1f", "") if r[0] == "mm_net_pct_oi" else r
+                for r in rows]
+    return rows
+
+
+def weekly_table(daily: pd.DataFrame, instrument: str | None = None) -> pd.DataFrame:
     """Level, 1-week and 4-week change, and percentile for each tracked series."""
     rows = []
-    for col, label, fmt, unit in WEEKLY_ROWS:
+    for col, label, fmt, unit in weekly_rows(instrument):
         if col not in daily or daily[col].dropna().empty:
             continue
         s = daily[col].dropna()
         if col == "slv_ounces":
             s = s / 1e6
-        if col == "mm_net_pct_oi":
+        if col.startswith("mm_net_pct_oi"):
             s = s[s.ne(s.shift())]  # one value per COT release
             w1, w4 = change(s, 1), change(s, 4)
         else:

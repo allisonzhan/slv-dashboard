@@ -20,13 +20,15 @@ def build(start: str | None = HISTORY_START) -> pd.DataFrame:
         raise FileNotFoundError("No cached prices; run `python -m slv_dashboard.refresh` first")
     df = px.dropna(subset=["silver"]).copy()
 
-    for name in (fred.NAME, cftc.NAME, comex.NAME, etf.NAME):
+    for name in (fred.NAME, cftc.NAME, cftc.GOLD_NAME, comex.NAME, etf.NAME):
         other = cache.load(name)
         if other is None:
             continue
-        if name == cftc.NAME:
+        if name in (cftc.NAME, cftc.GOLD_NAME):
             other = other.copy()
             other.index = other.index + cftc.RELEASE_LAG
+            if name == cftc.GOLD_NAME:
+                other = other.add_suffix("_gold")
         df = df.join(other.reindex(df.index.union(other.index)).ffill().reindex(df.index))
 
     if start is not None:

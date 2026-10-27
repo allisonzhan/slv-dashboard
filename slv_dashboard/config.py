@@ -30,10 +30,16 @@ PRICE_TICKERS = {
     "gold": "GC=F",
     "copper": "HG=F",
     "slv": "SLV",       # iShares Silver Trust, 2006 on
+    "gld": "GLD",       # SPDR Gold Shares, 2004 on
+    "iau": "IAU",       # iShares Gold Trust, 2005 on
     "sil": "SIL",       # Global X silver miners, 2010 on
     "vix": "^VIX",
     "oil": "CL=F",
 }
+
+# Instrument the dashboard, brief and trade builder use unless another is picked
+# (keys in slv_dashboard/instruments.py: slv, silver, gld, iau, gold)
+DEFAULT_INSTRUMENT = "slv"
 
 # Macro series from FRED
 FRED_SERIES = {
@@ -44,9 +50,10 @@ FRED_SERIES = {
     "fed_funds": "DFF",           # Effective fed funds rate, %
 }
 
-# CFTC disaggregated futures-only report, COMEX silver
+# CFTC disaggregated futures-only report, COMEX silver and gold
 CFTC_DISAGG_URL = "https://publicreporting.cftc.gov/resource/72hh-3qpy.json"
 CFTC_SILVER_CODE = "084691"
+CFTC_GOLD_CODE = "088691"
 
 # iShares Silver Trust product page (current ounces in trust)
 SLV_PRODUCT_URL = "https://www.ishares.com/us/products/239855/ishares-silver-trust-fund"
@@ -73,6 +80,7 @@ ANALOG_MIN_GAP_WEEKS = 8      # at most one analog per 8-week stretch
 ANALOG_SHAPE_DAYS = 60        # trading days of price path compared for shape
 ANALOG_SHAPE_WEIGHT = 0.3     # share of the match score from path shape
 ANALOG_BACKTEST_START = "2010-01-01"
+ANALOG_BACKTEST_INSTRUMENTS = ["slv", "gld"]   # one per metal; others reuse their metal's
 
 HTTP_HEADERS = {"User-Agent": "slv-dashboard (COINS research; github.com/allisonzhan/slv-dashboard)"}
 HTTP_TIMEOUT = 60

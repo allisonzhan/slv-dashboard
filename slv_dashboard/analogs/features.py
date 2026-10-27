@@ -12,15 +12,17 @@ mid-week matches today's state rather than last Friday's.
 import numpy as np
 import pandas as pd
 
-# What a trader would want to compare. Targets other than silver are ratios
-# or spreads, so the same engine covers relative-value trades.
-TARGETS = {
-    "silver": "Silver futures (SI=F)",
-    "slv": "SLV ETF",
+from slv_dashboard import instruments
+
+# What a trader would want to compare: the tradable instruments (ETFs and
+# futures, see slv_dashboard/instruments.py), plus ratios and spreads so the
+# same engine covers relative-value trades.
+RATIOS = {
     "gsr": "Gold/silver ratio",
     "slv_sil": "SLV / SIL (metal vs. miners)",
     "silver_copper": "Silver / copper",
 }
+TARGETS = {k: inst.label for k, inst in instruments.INSTRUMENTS.items()} | RATIOS
 
 GROUPS = {
     "technical": ["ma50_z", "ma200_z", "ret_4w", "ret_13w", "ret_26w", "rsi14", "bb_pctb", "dd_52w", "vol_pctile"],
@@ -52,11 +54,12 @@ GSR_Z_WEEKS = 156
 
 
 def target_series(daily: pd.DataFrame, target: str) -> pd.Series:
-    """Daily price (or ratio) series for a target key in TARGETS."""
-    if target == "silver":
-        s = daily["silver"]
-    elif target == "slv":
-        s = daily["slv"] if "slv" in daily else pd.Series(dtype=float)
+    """Daily price (or ratio) series for a target key in TARGETS.
+
+    ETFs are back-extended with futures returns before launch (instruments.price).
+    """
+    if target in instruments.INSTRUMENTS:
+        s = instruments.price(daily, target)
     elif target == "gsr":
         s = daily["gold"] / daily["silver"]
     elif target == "slv_sil":
@@ -66,6 +69,11 @@ def target_series(daily: pd.DataFrame, target: str) -> pd.Series:
     else:
         raise KeyError(f"Unknown target {target!r}; choose from {list(TARGETS)}")
     return s.dropna().rename(target)
+
+
+def metal_of(target: str) -> str:
+    """Which metal's positioning and setups apply; ratios are read from silver's side."""
+    return instruments.INSTRUMENTS[target].metal if target in instruments.INSTRUMENTS else "silver"
 
 
 def rsi(p: pd.Series, n: int = 14) -> pd.Series:
@@ -113,7 +121,11 @@ def build(daily: pd.DataFrame, target: str = "silver") -> pd.DataFrame:
 
     ``daily`` is the aligned frame from ``dataset.build(start=None)``; COT
     columns there are already shifted to their Friday release date.
+    Positioning comes from the target's own metal (gold COT for GLD/IAU/GC);
+    for gold targets the "gold 13w return" macro feature is left out, since
+    it would just repeat the target's own 13-week return.
     """
+    metal = metal_of(target)
     p = target_series(daily, target)
     tech = technicals(p)
     d = daily.reindex(p.index)
@@ -124,10 +136,11 @@ def build(daily: pd.DataFrame, target: str = "silver") -> pd.DataFrame:
     macro = pd.DataFrame(index=p.index)
     macro["ry_chg_13w"] = d["real_yield_10y"].diff(65) if "real_yield_10y" in d else np.nan
     macro["usd_ret_13w"] = ret_13w("dollar_broad")
-    macro["gold_ret_13w"] = ret_13w("gold")
+    macro["gold_ret_13w"] = ret_13w("gold") if metal != "gold" else np.nan
     macro["copper_ret_13w"] = ret_13w("copper")
     macro["gsr"] = d["gold"] / d["silver"]
-    macro["mm_net_pct_oi"] = d["mm_net_pct_oi"] if "mm_net_pct_oi" in d else np.nan
+    cot_col = "mm_net_pct_oi" if metal == "silver" else "mm_net_pct_oi_gold"
+    macro["mm_net_pct_oi"] = d[cot_col] if cot_col in d else np.nan
 
     w = _week_last_rows(tech.join(macro))
     w["vol_pctile"] = w["vol20"].expanding(MIN_PCTILE_WEEKS).rank(pct=True)
@@ -140,6 +153,7 @@ def build(daily: pd.DataFrame, target: str = "silver") -> pd.DataFrame:
     for col in ("breakout_52w", "golden_cross", "death_cross"):
         w[col] = tech[col].groupby(tech.index.to_period("W-FRI")).any().values[-len(w):]
     w.index.name = "date"
+    w.attrs["metal"] = metal
     return w
 
 

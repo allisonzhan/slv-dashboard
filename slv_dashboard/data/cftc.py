@@ -1,13 +1,14 @@
-"""CFTC Commitments of Traders (disaggregated, futures only) for COMEX silver."""
+"""CFTC Commitments of Traders (disaggregated, futures only) for COMEX silver and gold."""
 
 import pandas as pd
 import requests
 
-from slv_dashboard.config import (CFTC_DISAGG_URL, CFTC_SILVER_CODE, HTTP_HEADERS, HTTP_TIMEOUT,
+from slv_dashboard.config import (CFTC_DISAGG_URL, CFTC_GOLD_CODE, CFTC_SILVER_CODE, HTTP_HEADERS, HTTP_TIMEOUT,
                                   LONG_HISTORY_START)
 from slv_dashboard.data import cache
 
-NAME = "cot"
+NAME = "cot"             # silver; columns keep their plain names
+GOLD_NAME = "cot_gold"   # gold; columns get a _gold suffix in the aligned dataset
 
 # Positions are as of Tuesday but published Friday afternoon; joining on the
 # Tuesday date would leak information the market didn't have yet
@@ -25,9 +26,9 @@ FIELDS = {
 }
 
 
-def fetch(start: str = LONG_HISTORY_START) -> pd.DataFrame:
+def fetch(start: str = LONG_HISTORY_START, code: str = CFTC_SILVER_CODE) -> pd.DataFrame:
     params = {
-        "cftc_contract_market_code": CFTC_SILVER_CODE,
+        "cftc_contract_market_code": code,
         "$where": f"report_date_as_yyyy_mm_dd >= '{start}T00:00:00'",
         "$order": "report_date_as_yyyy_mm_dd",
         "$limit": 5000,
@@ -50,4 +51,5 @@ def parse(records: list[dict]) -> pd.DataFrame:
 def refresh() -> pd.DataFrame:
     df = fetch()
     cache.save(NAME, df)
+    cache.save(GOLD_NAME, fetch(code=CFTC_GOLD_CODE))
     return df

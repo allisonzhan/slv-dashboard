@@ -29,7 +29,8 @@ Weekly, before the meeting (or let the agent do it; see "Agent" below):
 python -m slv_dashboard.refresh          # data
 python -m slv_dashboard.models.report    # driver regressions and regimes
 python -m slv_dashboard.analogs.report   # analogs, setups, walk-forward backtest (a few minutes)
-python -m slv_dashboard.export           # reports/<date>/brief.md, brief.html, pitch.md, charts/*.png
+python -m slv_dashboard.export           # SLV brief: reports/<date>/brief.md, brief.html, pitch.md, charts/*.png
+python -m slv_dashboard.export --instrument gld   # any other instrument: reports/<date>-gld/
 ```
 
 A FRED API key is optional (the keyless CSV endpoint is used otherwise). If you want one, copy `.env.example` to `.env` and add it. Never commit `.env`.
@@ -41,9 +42,9 @@ Loaders pull the full history. The driver models and main panels use 2010 on, an
 | Series | Source | History |
 |---|---|---|
 | Silver, gold, copper, oil futures | yfinance (`SI=F`, `GC=F`, `HG=F`, `CL=F`) | 2000 on |
-| SLV, silver miners, VIX | yfinance (`SLV`, `SIL`, `^VIX`) | SLV 2006 on, SIL 2010 on |
+| SLV, GLD, IAU, silver miners, VIX | yfinance (`SLV`, `GLD`, `IAU`, `SIL`, `^VIX`) | GLD 2004, IAU 2005, SLV 2006, SIL 2010 on |
 | 10Y real yield, broad dollar, 2Y yield, breakevens, fed funds | FRED (`DFII10`, `DTWEXBGS`, `DGS2`, `T10YIE`, `DFF`) | 2003/2006 on |
-| Positioning | CFTC disaggregated COT, COMEX silver | 2006 on, weekly |
+| Positioning | CFTC disaggregated COT, COMEX silver and gold | 2006 on, weekly |
 | SLV ounces in trust | iShares product page | Today only; builds up with each daily refresh |
 | SI futures curve (next 4 liquid contracts) | yfinance (`SIZ26.CMX` etc.) | 6-month backfill, then builds up |
 | SLV option IV and skew (~30 days) | yfinance option chain, IV backed out from bid/ask | Snapshots; refresh during market hours |
@@ -73,6 +74,15 @@ python -m slv_dashboard.models.report   # fits everything, caches outputs, print
 - **Monetary vs. industrial (rule).** Copper's share of explanatory power, `r2_copper / (r2_gold + r2_copper)`, is ranked against all earlier windows (no look-ahead). Top third is industrial, bottom third monetary. Gold out-explains copper in about 90% of windows, so a raw comparison would always say monetary. Since the labels are relative, a regime lasting years drifts toward "mixed"; check `industrial_share` for the level.
 - **Calm vs. stressed (Markov).** A two-regime Markov-switching regression on gold and copper. On 2010–2026 data the regimes separate by volatility (stressed weeks have higher gold *and* copper betas), so they are labelled by volatility, not as monetary/industrial. Returns are scaled to percent and the extreme 0.5% of weeks clipped, otherwise the fit collapses onto single crash weeks.
 
+## Instruments
+
+Pick the instrument at the top of the dashboard: **SLV** (default), **silver futures**, **GLD**, **IAU** or **gold futures**. The price tile, analogs, setups, valuation, trade builder, options panel and exported brief all follow it. Change the default with `DEFAULT_INSTRUMENT` in `slv_dashboard/config.py`.
+
+- **ETF history is back-extended.** Before an ETF launched, its history uses the metal futures' returns (SLV before 2006, GLD before Nov 2004, IAU before 2005), so the analog engine still has 2000-on history. Prices before launch are right in percent terms but aren't real fund prices; the dashboard caption gives the launch date.
+- **Gold instruments use gold inputs.** That means gold COT positioning, a gold fair-value model (real yields, dollar, breakevens), GLD option IV, and GLD/GC vehicles in trade ideas. The silver-only pieces stay silver: the futures curve and lease rate, the gold/silver-ratio setup, and the monetary/industrial regime.
+- **IAU and futures borrow IV.** IAU and the futures use the liquid ETF's implied vol for their metal (GLD or SLV), since it's the same underlying.
+- **Backtests.** The nightly walk-forward backtest runs for SLV and GLD (`ANALOG_BACKTEST_INSTRUMENTS`). Other instruments show their metal's backtest, labelled as such.
+
 ## Historical analogs
 
 ```bash
@@ -84,7 +94,7 @@ python -m slv_dashboard.analogs.report   # current analogs, setup scan, walk-for
 - **State vector** (`analogs/features.py`), one row per week, built with no look-ahead. *Technical*: distance from the 50/200-day MAs, 4/13/26-week returns, RSI, Bollinger %b, drawdown from the 52-week high, vol percentile. *Macro*: 13-week change in real yields, the dollar, gold and copper, plus the gold/silver ratio z-score. *Positioning*: managed-money percentile and 4-week change. Groups can be switched off, e.g. for price-only analogs.
 - **Matching** (`analogs/engine.py`) combines state distance (standardised against earlier weeks only, each group weighted equally) with path shape (correlation of the last 60 days of price). A candidate's forward window must end before today. Analogs are de-clustered (one per 8 weeks) so one episode can't fill the list.
 - **Outcomes** at 1, 4, 13 and 26 weeks: hit rate, median and IQR, max adverse/favourable excursion (for stops and targets), forward realised vol (for options). Each is shown **against the base rate** over the same history, with a bootstrap p-value.
-- **Targets**: silver futures (default, 2000 on), SLV, the gold/silver ratio, SLV/SIL and silver/copper, so ratio and spread trades use the same engine.
+- **Targets**: any instrument (SLV, silver futures, GLD, IAU, gold futures), plus the gold/silver ratio, SLV/SIL and silver/copper, so ratio and spread trades use the same engine.
 - **Setups** (`analogs/setups.py`) are named rules, such as a crowded short, the ratio above 85 and turning, or a breakout with room to run. Each comes with its historical event study and a "live now" flag.
 - **Walk-forward backtest** (`analogs/backtest.py`) reruns the engine every week since 2010 using only what was known then. On 2000–2026 silver it does **not** beat the base rate on direction (4w and 13w). Read the analogs as context and risk ranges, not as a buy/sell signal, unless the backtest panel says otherwise.
 
@@ -180,5 +190,6 @@ reports/                Generated briefs and chart packs (git-ignored)
 - [x] Phase 7: futures curve and implied lease rate, SLV option IV/skew, catalyst calendar, FOMC event study, new alerts
 - [x] Phase 8: fair-value model, gold/silver ratio bands, scorecard, trade plan and pitch draft
 - [x] Phase 9: snapshot for the agent, news triage, brief and chart-pack export, Claude Code skills, silver playbook
+- [x] Instrument picker: SLV (default), silver futures, GLD, IAU, gold futures, with gold COT, gold fair value and GLD options
 - [ ] Anthropic API agent (`agent.py`) so the brief drafts itself after the nightly refresh
 - [ ] Shanghai premium and LBMA vault data; COMEX parser check against a real CME file

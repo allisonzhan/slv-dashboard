@@ -196,8 +196,9 @@ def technical_chart(tech: pd.DataFrame, t: Theme, *, height: int = 420, hover_fo
     return fig
 
 
-def fair_value_chart(fv: pd.DataFrame, t: Theme, *, height: int = 300) -> go.Figure:
-    """Silver vs. driver fair value, with the ±1σ residual band."""
+def fair_value_chart(fv: pd.DataFrame, t: Theme, *, name: str = "Silver", y_title: str = "$/oz",
+                     height: int = 300) -> go.Figure:
+    """Price vs. driver fair value, with the ±1σ residual band."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=fv.index, y=fv["band_hi"], mode="lines", line=dict(width=0), hoverinfo="skip",
                              showlegend=False))
@@ -206,9 +207,10 @@ def fair_value_chart(fv: pd.DataFrame, t: Theme, *, height: int = 300) -> go.Fig
     fig.add_trace(go.Scatter(x=fv.index, y=fv["fair_value"], mode="lines", name="Driver fair value",
                              line=dict(color=t.series[1], width=2, dash="dot"),
                              hovertemplate="%{y:,.2f}<extra>Fair value</extra>"))
-    fig.add_trace(go.Scatter(x=fv.index, y=fv["silver"], mode="lines", name="Silver",
-                             line=dict(color=t.series[0], width=2), hovertemplate="%{y:,.2f}<extra>Silver</extra>"))
-    _layout(fig, t, height, "$/oz")
+    fig.add_trace(go.Scatter(x=fv.index, y=fv["price"], mode="lines", name=name,
+                             line=dict(color=t.series[0], width=2),
+                             hovertemplate=f"%{{y:,.2f}}<extra>{name}</extra>"))
+    _layout(fig, t, height, y_title)
     fig.update_layout(showlegend=True)
     return fig
 
