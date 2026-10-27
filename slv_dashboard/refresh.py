@@ -4,11 +4,12 @@ import sys
 
 import pandas as pd
 
-from slv_dashboard.data import cftc, comex, curve, dataset, etf, fred, news, options, prices
+from slv_dashboard.data import cftc, comex, curve, dataset, etf, fred, gpr, news, options, prices
 
 SOURCES = [
     ("prices", prices.refresh),
     ("FRED macro", fred.refresh),
+    ("Geopolitical risk index", gpr.refresh),
     ("CFTC COT", cftc.refresh),
     ("SLV holdings", etf.refresh),
     ("COMEX stocks (imports)", comex.refresh),

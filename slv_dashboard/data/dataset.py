@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from slv_dashboard.config import HISTORY_START
-from slv_dashboard.data import cache, cftc, comex, etf, fred, prices
+from slv_dashboard.data import cache, cftc, comex, etf, fred, gpr, prices
 
 
 def build(start: str | None = HISTORY_START) -> pd.DataFrame:
@@ -20,10 +20,13 @@ def build(start: str | None = HISTORY_START) -> pd.DataFrame:
         raise FileNotFoundError("No cached prices; run `python -m slv_dashboard.refresh` first")
     df = px.dropna(subset=["silver"]).copy()
 
-    for name in (fred.NAME, cftc.NAME, cftc.GOLD_NAME, comex.NAME, etf.NAME):
+    for name in (fred.NAME, cftc.NAME, cftc.GOLD_NAME, comex.NAME, etf.NAME, gpr.NAME):
         other = cache.load(name)
         if other is None:
             continue
+        if name == gpr.NAME:
+            other = other.copy()
+            other.index = other.index + gpr.PUBLICATION_LAG
         if name in (cftc.NAME, cftc.GOLD_NAME):
             other = other.copy()
             other.index = other.index + cftc.RELEASE_LAG

@@ -15,16 +15,16 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from slv_dashboard import catalysts, instruments
+from slv_dashboard import catalysts, events, instruments
 from slv_dashboard.analogs import backtest, engine, setups
 from slv_dashboard.config import CACHE_DIR, DEFAULT_INSTRUMENT
 from slv_dashboard.dashboard import data as dd
 from slv_dashboard.data import cache, news
-from slv_dashboard.models import alerts, trade, valuation
+from slv_dashboard.models import alerts, channels, trade, valuation
 
 PATH = CACHE_DIR / "snapshot.json"
-SCHEMA_VERSION = 2   # 2: instrument-aware (headline.price instead of headline.silver)
-REQUIRED_KEYS = ["schema_version", "as_of", "instrument", "headline", "what_changed", "regime", "alerts", "analogs", "backtest",
+SCHEMA_VERSION = 3   # 2: instrument-aware (headline.price); 3: adds the events block
+REQUIRED_KEYS = ["schema_version", "as_of", "instrument", "events", "headline", "what_changed", "regime", "alerts", "analogs", "backtest",
                  "setups_live", "valuation", "positioning", "curve", "options", "scorecard", "trade_plan",
                  "catalysts", "news"]
 
@@ -55,7 +55,10 @@ def build(today: date | None = None, instrument: str = DEFAULT_INSTRUMENT) -> di
     px = instruments.price(long_daily, instrument)
     ctx = engine.AnalogContext.from_daily(long_daily, instrument)
     res = engine.find(ctx)
-    scan = setups.scan(ctx)
+    cat = events.catalogue(long_daily)
+    scan = setups.scan(ctx, setups.SETUPS + events.event_setups(cat))
+    chf = channels.classify(long_daily)
+    ch_now = chf.dropna(subset=["channel"]).iloc[-1]
     fv, gsr_b = valuation.fair_value(long_daily, instrument), valuation.gsr_bands(long_daily)
     feats = ctx.weekly.iloc[-1]
     bt_key, bts = data.backtest_for(instrument)
@@ -66,7 +69,8 @@ def build(today: date | None = None, instrument: str = DEFAULT_INSTRUMENT) -> di
     active = alerts.all_alerts(
         daily, data.rule[52]["regime"], data.markov["regime"] if data.markov is not None else None,
         data.betas[52], float(data.full_betas["copper_ret"]), 52,
-        curve=curve, setup_scan=scan, analog_outcomes=res.outcomes if res is not None else None)
+        curve=curve, setup_scan=scan, analog_outcomes=res.outcomes if res is not None else None,
+        channel_row=ch_now)
 
     card = trade.build_scorecard(outcomes=res.outcomes if res is not None else None,
                                  backtest_has_edge=verdicts.get(13, "").startswith("Useful"),
@@ -93,6 +97,10 @@ def build(today: date | None = None, instrument: str = DEFAULT_INSTRUMENT) -> di
     mm_reports = mm[mm.ne(mm.shift())]
     rule = data.rule[52].iloc[-1]
     news_df = cache.load_table(news.NAME)
+    g4 = long_daily["gpr"].rolling(20, min_periods=10).mean().dropna() if "gpr" in long_daily else pd.Series(dtype=float)
+    recent = cat[cat["date"] >= through - pd.Timedelta(days=45)]
+    ch_scores = ch_now[list(channels.CHANNELS)].astype(float)
+    ch_rows = scan[scan["key"].str.startswith("channel_") & (scan["horizon_weeks"] == 13)] if not scan.empty else scan
 
     snap = {
         "schema_version": SCHEMA_VERSION,
@@ -143,6 +151,20 @@ def build(today: date | None = None, instrument: str = DEFAULT_INSTRUMENT) -> di
         "scorecard": [{"lens": s.lens, "score": s.score, "reason": s.reason} for s in card.scores],
         "trade_plan": {k: v for k, v in vars(tp).items()},
         "catalysts": catalysts.upcoming(today, days=14).to_dict(orient="records"),
+        "events": {
+            "channel": ch_now["channel"],
+            "channel_description": channels.DESCRIPTIONS[ch_now["channel"]],
+            "leaning": ch_scores.idxmax(),
+            "channel_scores": ch_scores.to_dict(),
+            "metals_read": channels.METALS_READ[ch_now["channel"] if ch_now["channel"] != "quiet" else ch_scores.idxmax()],
+            "channel_history_13w": [{"channel": r["setup"].replace("Shock channel: ", ""), "episodes": r["n"],
+                                     "median_13w": r["median"], "base_13w": r["base_median"]}
+                                    for _, r in ch_rows.iterrows()],
+            "gpr_4w": g4.iloc[-1] if len(g4) else None,
+            "gpr_pctile_since_2000": float((g4 <= g4.iloc[-1]).mean()) if len(g4) else None,
+            "recent_events": [{"date": r["date"], "category": r["category_label"], "title": r["title"],
+                               "source": r["source"]} for _, r in recent.iterrows()],
+        },
         "news": news.top_by_bucket(news_df) if news_df is not None and not news_df.empty else {},
     }
     return _clean(snap)

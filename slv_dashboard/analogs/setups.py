@@ -15,6 +15,7 @@ import pandas as pd
 from slv_dashboard import catalysts
 from slv_dashboard.analogs import engine
 from slv_dashboard.config import ANALOG_MIN_GAP_WEEKS
+from slv_dashboard.models import channels
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,14 @@ SETUPS = [
           lambda w: (w["ret_13w"] > 0.30) & (w["rsi14"] > 70), "bearish"),
     Setup("fomc_week", "FOMC decision week (2019 on)", "How the metal has traded from the week of a Fed decision",
           lambda w: catalysts.fomc_week_mask(w.index), "event", min_gap_weeks=1),
+]
+
+# One setup per shock channel (models/channels.py): how the metal did after weeks the
+# market traded as, say, an inflation shock rather than a safe-haven bid
+SETUPS += [
+    Setup(f"channel_{ch}", f"Shock channel: {ch.replace('_', ' ')}", channels.DESCRIPTIONS[ch],
+          lambda w, ch=ch: w["channel"] == ch, "event", min_gap_weeks=4)
+    for ch in channels.CHANNELS
 ]
 
 
