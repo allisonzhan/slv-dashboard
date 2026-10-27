@@ -20,6 +20,12 @@ Two sentences.
 - The second gives the main risk to that view and the next catalyst that will test it.
 - Use the scorecard stance unless the news clearly overrides it. If it does, say why.
 
+### News backdrop (already filled)
+The brief's "News backdrop" section gives the market's shock channel (haven, inflation, hawkish, dovish, risk-off, growth or
+quiet), the geopolitical risk index and recent catalogue events. Use it to frame the news: say whether this week's
+headlines are acting through the haven channel or the inflation, Fed and dollar channel, and cite
+`events.channel_history_13w` in the snapshot for how the metal did after past shocks of the same kind.
+
 ### `news`
 Three to six bullets, each in the form `**Driver**: what happened → what it means for silver`.
 - Keep only items that moved, or could move, one of silver's drivers this week:

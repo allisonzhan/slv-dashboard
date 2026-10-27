@@ -116,6 +116,17 @@ def render_markdown(s: dict) -> str:
     L.append(f"- Valuation: {v['read']} Gold/silver ratio {v['gsr']:.1f}, {pct(v['gsr_pctile_3y'], False)} of its 3y range")
     L.append("")
 
+    ev = s.get("events")
+    if ev:
+        lead = (f"**{ev['channel_description']}**" if ev["channel"] != "quiet"
+                else f"No dominant shock (leaning {ev['leaning'].replace('_', ' ')})")
+        gpr_txt = (f" Geopolitical risk index (4w avg) {ev['gpr_4w']:.0f}, "
+                   f"{pct(ev['gpr_pctile_since_2000'], False)} percentile since 2000." if ev.get("gpr_4w") else "")
+        L += ["## News backdrop", f"{lead}. Usual read for metals: {ev['metals_read']}.{gpr_txt}"]
+        if ev.get("recent_events"):
+            L.append("Recent events: " + "; ".join(f"{e['date'][:10]} {e['title']}" for e in ev["recent_events"][:5]))
+        L.append("")
+
     news_lines = []
     for bucket, items in (s.get("news") or {}).items():
         if items:

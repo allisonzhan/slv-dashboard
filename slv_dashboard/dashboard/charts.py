@@ -230,3 +230,42 @@ def ratio_bands(b: pd.DataFrame, t: Theme, *, height: int = 260) -> go.Figure:
     _layout(fig, t, height)
     fig.update_layout(showlegend=True)
     return fig
+
+
+def event_paths(paths: pd.DataFrame, base: pd.Series, t: Theme, *, height: int = 300) -> go.Figure:
+    """Average move around past events (median and 25-75% band) vs. the unconditional drift.
+
+    ``paths`` is days-from-event x event, as returns from the close before the event.
+    """
+    q = paths.quantile([0.25, 0.5, 0.75], axis=1).T * 100
+    x = paths.index
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=q[0.75], mode="lines", line=dict(width=0), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=x, y=q[0.25], mode="lines", line=dict(width=0), fill="tonexty", fillcolor=t.band,
+                             name="Events 25–75%", hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=base.index, y=base.values * 100, mode="lines", name="Base drift",
+                             line=dict(color=t.baseline, width=1.5, dash="dot"),
+                             hovertemplate="%{y:+.1f}%<extra>Base drift</extra>"))
+    fig.add_trace(go.Scatter(x=x, y=q[0.5], mode="lines", name=f"Median of {paths.shape[1]} events",
+                             line=dict(color=t.series[0], width=2), hovertemplate="%{y:+.1f}%<extra>Median</extra>"))
+    fig.add_vline(x=0, line=dict(color=t.baseline, width=1))
+    fig.add_hline(y=0, line=dict(color=t.grid, width=1))
+    _layout(fig, t, height, "% from close before event")
+    fig.update_xaxes(title=dict(text="trading days from event", font=dict(color=t.muted, size=11)))
+    fig.update_layout(showlegend=True, hovermode="x unified")
+    return fig
+
+
+def channel_scores(scores: pd.Series, t: Theme, *, threshold: float = 1.0, height: int = 220) -> go.Figure:
+    """Current score per shock channel, strongest at the top; the dotted line is the labelling threshold."""
+    s = scores.dropna().sort_values()
+    colors = [t.series[0] if v >= threshold else t.baseline for v in s.values]
+    fig = go.Figure(go.Bar(x=s.values, y=[i.replace("_", " ") for i in s.index], orientation="h",
+                           marker_color=colors, hovertemplate="%{x:+.2f}<extra>%{y}</extra>"))
+    fig.add_vline(x=threshold, line=dict(color=t.muted, width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color=t.baseline, width=1))
+    _layout(fig, t, height)
+    fig.update_layout(showlegend=False, hovermode="closest", margin=dict(l=8, r=8, t=8, b=8))
+    fig.update_xaxes(showspikes=False, title=dict(text="score (scaled 4-week moves)", font=dict(color=t.muted, size=11)))
+    fig.update_yaxes(showspikes=False)
+    return fig

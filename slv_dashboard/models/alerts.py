@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from slv_dashboard.models import channels
+
 WARN, INFO = "warning", "info"
 
 RATIO_EXTREME_PCTILE = 0.90       # ratio in its top/bottom 10% since 2010
@@ -20,6 +22,7 @@ LEASE_RATE_PCT = 3.0              # implied lease rate that signals tight physic
 SLV_FLOW_PCT = 1.0                # one-day change in SLV ounces
 ANALOG_EDGE = 0.05                # 13w analog median vs. base rate
 ANALOG_P = 0.10
+GPR_PCTILE = 0.90                 # 4-week average geopolitical risk index vs. history
 
 
 @dataclass(frozen=True)
@@ -160,10 +163,35 @@ def analog_edge(outcomes: pd.DataFrame | None, horizon: int = 13) -> Alert | Non
     return None
 
 
+def geopolitical_risk(daily: pd.DataFrame) -> Alert | None:
+    """4-week average GPR index in the top decile of its history (data from 2000 in the aligned frame)."""
+    if "gpr" not in daily or daily["gpr"].dropna().empty:
+        return None
+    g = daily["gpr"].rolling(20, min_periods=10).mean().dropna()
+    last = g.iloc[-1]
+    pct = float((g < last).mean() + 0.5 * (g == last).mean())   # mid-rank: a flat history isn't "extreme"
+    if pct >= GPR_PCTILE:
+        return Alert(WARN, "Geopolitical risk elevated",
+                     f"4-week average GPR {g.iloc[-1]:.0f}, {pct:.0%} percentile: check whether metals are getting "
+                     "a haven bid or an oil/inflation shock (News & Events tab)")
+    return None
+
+
+def shock_channel(channel_row: pd.Series | None) -> Alert | None:
+    """The market is trading a clear shock channel this week (models/channels.py)."""
+    if channel_row is None or not isinstance(channel_row.get("channel"), str) or channel_row["channel"] == "quiet":
+        return None
+    ch = channel_row["channel"]
+    return Alert(INFO, f"Market trading as a {ch.replace('_', ' ')} shock",
+                 f"{channels.DESCRIPTIONS[ch]} (score {channel_row['channel_score']:.1f}); "
+                 f"usual read for metals: {channels.METALS_READ[ch]}")
+
+
 def all_alerts(daily: pd.DataFrame, rule_regime: pd.Series, markov_regime: pd.Series | None,
                betas: pd.DataFrame, full_copper_beta: float, window: int,
                today: pd.Timestamp | None = None, curve: pd.DataFrame | None = None,
-               setup_scan: pd.DataFrame | None = None, analog_outcomes: pd.DataFrame | None = None) -> list[Alert]:
+               setup_scan: pd.DataFrame | None = None, analog_outcomes: pd.DataFrame | None = None,
+               channel_row: pd.Series | None = None) -> list[Alert]:
     today = today or pd.Timestamp.today().normalize()
     checks = [
         ratio_extreme(daily),
@@ -175,6 +203,8 @@ def all_alerts(daily: pd.DataFrame, rule_regime: pd.Series, markov_regime: pd.Se
         curve_tightness(curve),
         slv_flow(daily),
         analog_edge(analog_outcomes),
+        geopolitical_risk(daily),
+        shock_channel(channel_row),
     ]
     alerts = stale_data(daily, today) + [a for a in checks if a is not None] + live_setups(setup_scan)
     return sorted(alerts, key=lambda a: a.level != WARN)  # warnings first

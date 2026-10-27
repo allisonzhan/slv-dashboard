@@ -3,13 +3,16 @@
 import pandas as pd
 import streamlit as st
 
-from slv_dashboard import catalysts, export, instruments
+import re
+
+from slv_dashboard import catalysts, events, export, instruments
 from slv_dashboard.analogs import backtest, engine, setups
 from slv_dashboard.analogs import features as feat
 from slv_dashboard.config import ANALOG_HORIZONS_WEEKS, ANALOG_K, DEFAULT_INSTRUMENT, REGRESSION_WINDOWS_WEEKS
 from slv_dashboard.dashboard import charts
 from slv_dashboard.dashboard import data as dd
-from slv_dashboard.models import alerts, trade, valuation
+from slv_dashboard.data import cache, news
+from slv_dashboard.models import alerts, channels, trade, valuation
 
 st.set_page_config(page_title="Metals Dashboard", layout="wide")
 
@@ -31,9 +34,20 @@ def analog_context(target: str, through: pd.Timestamp) -> engine.AnalogContext:
     return engine.AnalogContext.from_daily(load_data().long_daily, target)
 
 
+@st.cache_data(show_spinner="Building the event catalogue")
+def event_catalogue(through: pd.Timestamp) -> pd.DataFrame:
+    return events.catalogue(load_data().long_daily)
+
+
+@st.cache_data(show_spinner="Classifying shock channels")
+def channel_frame(through: pd.Timestamp) -> pd.DataFrame:
+    return channels.classify(load_data().long_daily)
+
+
 @st.cache_data(show_spinner="Scanning setups")
 def setup_scan(target: str, through: pd.Timestamp) -> pd.DataFrame:
-    return setups.scan(analog_context(target, through))
+    # Named setups plus one per event type in the catalogue
+    return setups.scan(analog_context(target, through), setups.SETUPS + events.event_setups(event_catalogue(through)))
 
 
 @st.cache_data(show_spinner="Fitting fair value")
@@ -55,6 +69,8 @@ def refresh_everything() -> None:
     analog_context.clear()
     setup_scan.clear()
     fair_value.clear()
+    event_catalogue.clear()
+    channel_frame.clear()
 
 
 def pct(v, signed: bool = True) -> str:
@@ -130,12 +146,14 @@ if data.markov is not None:
 # --- Alerts --------------------------------------------------------------------------
 through = data.long_daily.index.max()
 now_res = engine.find(analog_context(ik, through))
+chf = channel_frame(through)
+ch_now = chf.dropna(subset=["channel"]).iloc[-1]
 active = alerts.all_alerts(
     daily, data.rule[window]["regime"],
     data.markov["regime"] if data.markov is not None else None,
     data.betas[window], float(data.full_betas["copper_ret"]), window,
     curve=data.curve if inst.metal == "silver" else None, setup_scan=setup_scan(ik, through),
-    analog_outcomes=now_res.outcomes if now_res is not None else None,
+    analog_outcomes=now_res.outcomes if now_res is not None else None, channel_row=ch_now,
 )
 
 
@@ -149,8 +167,9 @@ def show_alerts() -> None:
         st.caption("No alerts: ratio, positioning and regimes are all inside normal ranges.")
 
 
-tab_brief, tab_analogs, tab_macro, tab_supply, tab_pos, tab_val, tab_trade = st.tabs(
-    ["Weekly Brief", "Technicals & Analogs", "Macro", "Supply & Flows", "Positioning", "Valuation", "Trade Builder"])
+tab_brief, tab_news, tab_analogs, tab_macro, tab_supply, tab_pos, tab_val, tab_trade = st.tabs(
+    ["Weekly Brief", "News & Events", "Technicals & Analogs", "Macro", "Supply & Flows", "Positioning", "Valuation",
+     "Trade Builder"])
 fv, gsr_b = fair_value(ik, through)
 bt_key, bts = data.backtest_for(ik)
 bt_note = "" if bt_key in (None, ik) else f" ({instruments.get(bt_key).label} backtest, same metal)"
@@ -187,6 +206,14 @@ with tab_brief:
         for _, r in live.iterrows():
             st.markdown(f"**{r['setup']}** ({r['view']}): {r['n']:.0f} past episodes, 13w median "
                         f"{pct(r['median'])} vs. base {pct(r['base_median'])}, up {pct(r['hit_rate'], False)}")
+        st.subheader("News backdrop")
+        lean = ch_now[list(channels.CHANNELS)].astype(float).idxmax()
+        st.markdown(f"**{channels.DESCRIPTIONS[ch_now['channel']]}**" if ch_now["channel"] != "quiet" else
+                    f"**No dominant shock** (leaning {lean.replace('_', ' ')}, score {ch_now[lean]:.1f})")
+        if "gpr" in data.long_daily:
+            g4 = data.long_daily["gpr"].rolling(20, min_periods=10).mean().dropna()
+            st.caption(f"Geopolitical risk (4-week avg) {g4.iloc[-1]:.0f}, {(g4 <= g4.iloc[-1]).mean():.0%} "
+                       "percentile since 2000. Details in News & Events.")
         st.subheader("Catalysts, next 3 weeks")
         cal = catalysts.upcoming(days=21)
         if cal.empty:
@@ -211,8 +238,8 @@ with tab_brief:
 
 # === Technicals & Analogs ============================================================
 with tab_analogs:
-    st.caption("Past weeks that looked most like this one (trend, macro and positioning, plus the shape of "
-               "the last 60 days), and what happened next. Every number sits next to the base rate: the "
+    st.caption("Past weeks that looked most like this one (trend, macro, positioning and the news backdrop, plus "
+               "the shape of the last 60 days), and what happened next. Every number sits next to the base rate: the "
                "edge is the difference.")
     a1, a2, a3, a4 = st.columns([2, 3, 1, 1], vertical_alignment="bottom")
     target = a1.selectbox("Series", list(feat.TARGETS), index=list(feat.TARGETS).index(ik),
@@ -221,13 +248,20 @@ with tab_analogs:
                             format_func=str.title)
     k = a3.number_input("Analogs", 5, 50, ANALOG_K, step=5, key="an_k")
     horizon = a4.selectbox("Horizon", [4, 13, 26], index=1, format_func=lambda h: f"{h} weeks", key="an_h")
-    same_regime = st.toggle("Only weeks in the same monetary/industrial regime (52w rule, 2012 on)", key="an_reg")
+    t1, t2 = st.columns(2)
+    same_regime = t1.toggle("Only weeks in the same monetary/industrial regime (52w rule, 2012 on)", key="an_reg")
+    same_channel = t2.toggle("Only weeks in the same shock channel", key="an_ch",
+                             help="Shock channel from News & Events, e.g. only past inflation-shock weeks. "
+                                  "Off when the market is quiet.")
 
     ctx = analog_context(target, through)
     regime_filter = None
     if same_regime:
         reg = data.rule[52]["regime"].reindex(ctx.weekly.index, method="ffill")
         regime_filter = reg == reg.iloc[-1]
+    if same_channel and "channel" in ctx.weekly and ctx.weekly["channel"].iloc[-1] not in ("quiet", None):
+        ch_mask = ctx.weekly["channel"] == ctx.weekly["channel"].iloc[-1]
+        regime_filter = ch_mask if regime_filter is None else (regime_filter & ch_mask)
     res = engine.find(ctx, groups=tuple(groups), k=int(k), candidate_filter=regime_filter)
     if res is None:
         st.info("Not enough comparable history for this combination. Try fewer feature groups or turn off "
@@ -523,3 +557,159 @@ with tab_trade:
         st.markdown(pitch.replace("$", "\\$"))
     st.download_button("Download pitch draft", pitch, file_name=f"{ik}_pitch_{through:%Y-%m}.md",
                        mime="text/markdown")
+
+# === News & Events ====================================================================
+NEWS_CATEGORIES = {"fed_rates": "Fed & rates", "dollar": "Dollar", "geopolitics": "Geopolitics",
+                   "china_industrial": "China & industrial", "solar": "Solar", "supply_mines": "Supply",
+                   "flows_market": "Flows & market"}
+TRADE_RE = re.compile(r"\b(tariff|trade war|export ban|export control|sanction)", re.I)
+CATEGORY_FILTERS = ["All", "Fed & rates", "Macro data", "Geopolitics", "Trade policy", "Dollar", "China & industrial",
+                    "Solar", "Supply", "Flows & market", "Financial stress"]
+
+
+def news_labels(row) -> set[str]:
+    labels = {NEWS_CATEGORIES[b] for b in str(row["buckets"]).split(",") if b in NEWS_CATEGORIES}
+    if TRADE_RE.search(str(row["title"])):
+        labels.add("Trade policy")
+    return labels
+
+
+with tab_news:
+    st.caption("Fed, macro data, geopolitics, trade, supply and market events in one place: what kind of shock the "
+               "market is trading, this week's headlines, and how the instrument behaved after similar events "
+               "before. Use the filter to focus on one category.")
+    cat_filter = st.segmented_control("Category", CATEGORY_FILTERS, default="All", key="news_cat") or "All"
+
+    # --- Shock channel and geopolitical risk --------------------------------------------
+    n1, n2 = st.columns([2, 3])
+    with n1:
+        st.subheader("What kind of shock is the market trading?")
+        label = ch_now["channel"]
+        lean = ch_now[list(channels.CHANNELS)].astype(float).idxmax()
+        st.metric("Shock channel (4-week cross-asset moves)", label.replace("_", " ").title(),
+                  channels.DESCRIPTIONS[label] if label != "quiet" else f"leaning {lean.replace('_', ' ')}",
+                  delta_color="off", help="Each channel scores how strongly the last 4 weeks of moves in gold, oil, "
+                  "copper, equities, the dollar, VIX, real yields, the 2Y and breakevens match that kind of shock, "
+                  "each scaled by its own history. A channel is named when it scores 1.0 or more.")
+        chart(charts.channel_scores(ch_now[list(channels.CHANNELS)].astype(float), t),
+              chf[list(channels.CHANNELS) + ["channel"]].iloc[-260:], "ch_scores")
+        st.caption(f"Usual read for metals: **{channels.METALS_READ[label if label != 'quiet' else lean]}**. "
+                   "The event studies below check that against history.")
+    with n2:
+        st.subheader("Geopolitical risk index")
+        if "gpr" in data.long_daily:
+            gdf = cache.load("gpr")
+            g4 = data.long_daily["gpr"].rolling(20, min_periods=10).mean().dropna()
+            p95 = float(g4.quantile(0.95))
+            gclip = dd.clip(g4, range_key)
+            chart(charts.line({"GPR, 4-week average": gclip}, t, hover_format=".0f", height=260, ref=p95,
+                              ref_label=f"95th pct since 2000 ({p95:.0f})"),
+                  gdf.loc[gdf.index >= gclip.index.min()] if gdf is not None else gclip.to_frame(), "gpr")
+            if gdf is not None and not gdf.empty:
+                last30 = gdf.iloc[-30:]
+                st.caption(f"Now {g4.iloc[-1]:.0f} ({(g4 <= g4.iloc[-1]).mean():.0%} percentile since 2000; "
+                           f"1985-2019 average = 100). Last 30 days: acts {last30['gpr_act'].mean():.0f}, "
+                           f"threats {last30['gpr_threat'].mean():.0f}. Source: Caldara & Iacoviello GPR index "
+                           "(newspaper coverage of wars, attacks and threats).")
+        else:
+            st.caption("No GPR data cached yet: press Refresh data.")
+
+    # --- Headlines and the event timeline -----------------------------------------------
+    h1, h2 = st.columns([3, 2])
+    with h1:
+        st.subheader("This week's headlines")
+        ndf = cache.load_table(news.NAME)
+        if ndf is not None and not ndf.empty:
+            ndf = ndf.assign(Category=[", ".join(sorted(news_labels(r))) for _, r in ndf.iterrows()])
+            if cat_filter != "All":
+                ndf = ndf[ndf["Category"].str.contains(cat_filter, regex=False)]
+            st.dataframe(ndf[["published", "title", "source", "Category", "link"]].head(60).rename(
+                columns={"published": "Published", "title": "Headline", "source": "Source", "link": "Link"}),
+                width="stretch", height=380, hide_index=True,
+                column_config={"Link": st.column_config.LinkColumn("Link", display_text="open")})
+            st.caption("Free RSS feeds, keyword-tagged by driver and sorted by relevance to metals. The weekly-brief "
+                       "agent verifies the ones that matter.")
+        else:
+            st.caption("No headlines cached yet: press Refresh data.")
+    with h2:
+        st.subheader("Recent and upcoming events")
+        cat = event_catalogue(through)
+        shown = cat if cat_filter == "All" else cat[cat["category_label"] == cat_filter]
+        recent = shown[shown["date"] >= through - pd.Timedelta(days=120)]
+        st.dataframe(recent[["date", "category_label", "title"]].rename(
+            columns={"date": "Date", "category_label": "Category", "title": "Event"}).assign(
+            Date=lambda x: x["Date"].dt.strftime("%Y-%m-%d")), width="stretch", height=220, hide_index=True)
+        cal = catalysts.upcoming(days=21)
+        if not cal.empty:
+            st.caption("Coming up: " + "; ".join(f"{r['date']:%b %d} {r['event'].split(' (')[0]}"
+                                                for _, r in cal.iterrows()))
+
+    # --- Event studies ---------------------------------------------------------------
+    st.subheader(f"Event studies: what {inst.label} did after past events")
+    scan_all = setup_scan(ik, through)
+    counts = shown.groupby("type").agg(n=("date", "size"), last=("date", "max"), label=("type_label", "first"))
+    counts = counts[counts["n"] >= 2].sort_values("last", ascending=False)
+    if counts.empty:
+        st.caption("No event types in this category yet. Add events in data/imports/events.csv.")
+    else:
+        e1, e2 = st.columns([2, 1], vertical_alignment="bottom")
+        etype = e1.selectbox("Event type", list(counts.index), key=f"ev_type_{cat_filter}",
+                             format_func=lambda k: f"{counts.loc[k, 'label']} ({counts.loc[k, 'n']} events, "
+                                                   f"latest {counts.loc[k, 'last']:%b %Y})")
+        ev_h = e2.selectbox("Horizon", [1, 4, 13, 26], index=2, format_func=lambda h: f"{h} weeks", key="ev_h")
+        ev = cat[cat["type"] == etype].sort_values("date")
+        price_l = feat.target_series(data.long_daily, ik)
+        ep = events.paths(price_l, ev["date"])
+        if ep.shape[1] >= 2:
+            v1, v2 = st.columns([3, 2])
+            with v1:
+                chart(charts.event_paths(ep, events.drift(price_l), t), ep.rename(columns=lambda d: f"{d:%Y-%m-%d}"),
+                      "ev_paths")
+            with v2:
+                row = scan_all[(scan_all["key"] == f"event_{etype}") & (scan_all["horizon_weeks"] == ev_h)]
+                if not row.empty:
+                    r = row.iloc[0]
+                    st.metric(f"Median {ev_h}w after", pct(r["median"]), f"{r['edge_median']:+.1%} vs. base",
+                              help=f"Base rate {r['base_median']:+.1%}. First week of each episode, "
+                                   f"{r['n']:.0f} episodes with a known outcome.")
+                    st.metric("Up share", pct(r["hit_rate"], False), f"base {pct(r['base_hit_rate'], False)}",
+                              delta_color="off")
+                    st.metric("Typical drawdown (MAE)", pct(r["mae_median"]), f"p = {r['p_value']:.2f}",
+                              delta_color="off")
+                else:
+                    st.caption("Fewer than 4 separate episodes: shown as paths only, no statistics.")
+        ctx_i = analog_context(ik, through)
+        wk = ctx_i.weekly
+        rows = []
+        for _, e in ev.sort_values("date", ascending=False).iterrows():
+            i = wk.index.searchsorted(e["date"])
+            if i >= len(wk):
+                continue
+            d0 = wk.index[i]
+            out = {"Date": f"{e['date']:%Y-%m-%d}", "Event": e["title"],
+                   "Channel then": (str(wk["channel"].iloc[i]).replace("_", " ") if "channel" in wk and pd.notna(wk["channel"].iloc[i]) else "")}
+            for h in (4, 13):
+                out[f"{h}w after"] = pct(ctx_i.outcomes[h]["fwd"].get(d0))
+            out["13w worst"] = pct(ctx_i.outcomes[13]["mae"].get(d0))
+            out["Source"] = e["source"]
+            rows.append(out)
+        st.dataframe(pd.DataFrame(rows), width="stretch", height=260, hide_index=True)
+        st.caption("Returns from the close at the end of the event's week. Short histories and overlapping events "
+                   "make single types noisy: read the median against the base drift, not one episode.")
+
+    # --- Outcomes by shock channel ------------------------------------------------------
+    st.subheader("After each kind of shock, historically")
+    chs = scan_all[scan_all["key"].str.startswith("channel_")]
+    if not chs.empty:
+        piv = chs[chs["horizon_weeks"].isin([4, 13])].pivot_table(
+            index="setup", columns="horizon_weeks", values=["median", "base_median", "hit_rate", "n"], aggfunc="first")
+        table = pd.DataFrame({
+            "Now": [("◀ this week" if s.endswith(label.replace("_", " ")) else "") for s in piv.index],
+            "Episodes": piv[("n", 13)].astype("Int64"),
+            "4w median": piv[("median", 4)].map(pct), "13w median": piv[("median", 13)].map(pct),
+            "13w base": piv[("base_median", 13)].map(pct), "13w up share": piv[("hit_rate", 13)].map(
+                lambda v: pct(v, False)),
+        }, index=[i.replace("Shock channel: ", "").title() for i in piv.index])
+        st.dataframe(table, width="stretch")
+        st.caption(f"First week of each episode of that channel, for {inst.label}. This is the check on the 'usual "
+                   "read': e.g. whether inflation shocks really hurt the metal more than haven shocks helped it.")

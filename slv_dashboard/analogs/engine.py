@@ -236,7 +236,8 @@ def find(ctx: AnalogContext, date: pd.Timestamp | None = None, *, groups=tuple(f
 
     matches = pd.DataFrame({"score": score[picked], "distance": dist[picked], "shape_corr": corr[picked]})
     matches["episode"] = [episode(d) for d in picked]
-    matches = matches.join(w.loc[picked, cols])
+    context_cols = [c for c in ("channel",) if c in w]   # shown with each analog, not matched on
+    matches = matches.join(w.loc[picked, cols + context_cols])
     for h in ctx.horizons:
         if h > horizon_weeks:
             continue
@@ -265,7 +266,7 @@ def find(ctx: AnalogContext, date: pd.Timestamp | None = None, *, groups=tuple(f
         days = horizon_weeks * 5
         paths = pd.DataFrame({d: ctx.path(int(r), days) for d, r in zip(picked, w.index.get_indexer(picked))})
         paths.index.name = "days_ahead"
-    return AnalogResult(qdate, matches, outcomes, paths, cols, len(pool), w[cols].iloc[qi])
+    return AnalogResult(qdate, matches, outcomes, paths, cols, len(pool), w[cols + context_cols].iloc[qi])
 
 
 def summarise_fast(fwd: pd.DataFrame, base: pd.DataFrame) -> dict:
@@ -288,8 +289,12 @@ def describe(row: pd.Series) -> str:
         "usd_ret_13w": lambda v: f"USD {v:+.1%}/13w",
         "gsr_z": lambda v: f"GSR z {v:+.1f}",
         "mm_pctile": lambda v: f"MM {v:.0%} pctile",
+        "gpr_pctile": lambda v: f"geopol risk {v:.0%} pctile",
+        "oil_ret_4w": lambda v: f"oil {v:+.0%}/4w",
     }
     for col, f in fmt.items():
         if col in row and pd.notna(row[col]):
             parts.append(f(row[col]))
+    if "channel" in row and isinstance(row["channel"], str) and row["channel"] != "quiet":
+        parts.append(f"{row['channel'].replace('_', ' ')} shock")
     return ", ".join(parts)

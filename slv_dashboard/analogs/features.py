@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from slv_dashboard import instruments
+from slv_dashboard.models import channels
 
 # What a trader would want to compare: the tradable instruments (ETFs and
 # futures, see slv_dashboard/instruments.py), plus ratios and spreads so the
@@ -28,6 +29,8 @@ GROUPS = {
     "technical": ["ma50_z", "ma200_z", "ret_4w", "ret_13w", "ret_26w", "rsi14", "bb_pctb", "dd_52w", "vol_pctile"],
     "macro": ["ry_chg_13w", "usd_ret_13w", "gold_ret_13w", "gsr_z", "copper_ret_13w"],
     "positioning": ["mm_pctile", "mm_chg_4w"],
+    # News backdrop: geopolitical risk (GPR index), the oil shock and market stress
+    "events": ["gpr_pctile", "gpr_chg_4w", "oil_ret_4w", "vix_pctile"],
 }
 
 LABELS = {
@@ -47,6 +50,10 @@ LABELS = {
     "copper_ret_13w": "Copper 13w return",
     "mm_pctile": "Managed money net % OI percentile",
     "mm_chg_4w": "Managed money 4w change (pts of OI)",
+    "gpr_pctile": "Geopolitical risk (4w avg) percentile",
+    "gpr_chg_4w": "Geopolitical risk 4w change (log)",
+    "oil_ret_4w": "Oil 4w return",
+    "vix_pctile": "VIX percentile",
 }
 
 MIN_PCTILE_WEEKS = 52   # expanding percentiles start after a year of history
@@ -142,6 +149,18 @@ def build(daily: pd.DataFrame, target: str = "silver") -> pd.DataFrame:
     cot_col = "mm_net_pct_oi" if metal == "silver" else "mm_net_pct_oi_gold"
     macro["mm_net_pct_oi"] = d[cot_col] if cot_col in d else np.nan
 
+    # Events backdrop: the GPR index is a daily newspaper count, so it's smoothed over 4 weeks
+    if "gpr" in d:
+        gpr_4w = d["gpr"].rolling(20, min_periods=10).mean()
+        macro["gpr_4w"] = gpr_4w
+        macro["gpr_chg_4w"] = np.log(gpr_4w / gpr_4w.shift(20))
+    else:
+        macro["gpr_4w"] = macro["gpr_chg_4w"] = np.nan
+    macro["oil_ret_4w"] = d["oil"].pct_change(20, fill_method=None) if "oil" in d else np.nan
+    macro["vix"] = d["vix"] if "vix" in d else np.nan
+    ch = channels.classify(d)
+    macro = macro.join(ch)
+
     w = _week_last_rows(tech.join(macro))
     w["vol_pctile"] = w["vol20"].expanding(MIN_PCTILE_WEEKS).rank(pct=True)
     w["gsr_z"] = (w["gsr"] - w["gsr"].rolling(GSR_Z_WEEKS, min_periods=104).mean()) / \
@@ -149,6 +168,8 @@ def build(daily: pd.DataFrame, target: str = "silver") -> pd.DataFrame:
     mm = w["mm_net_pct_oi"]
     w["mm_pctile"] = mm.expanding(MIN_PCTILE_WEEKS).rank(pct=True).where(mm.notna())
     w["mm_chg_4w"] = mm.diff(4)
+    w["gpr_pctile"] = w["gpr_4w"].expanding(MIN_PCTILE_WEEKS).rank(pct=True).where(w["gpr_4w"].notna())
+    w["vix_pctile"] = w["vix"].expanding(MIN_PCTILE_WEEKS).rank(pct=True).where(w["vix"].notna())
     # Events are flagged if they happened on any day of the week, not just the last
     for col in ("breakout_52w", "golden_cross", "death_cross"):
         w[col] = tech[col].groupby(tech.index.to_period("W-FRI")).any().values[-len(w):]

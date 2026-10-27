@@ -35,6 +35,7 @@ PRICE_TICKERS = {
     "sil": "SIL",       # Global X silver miners, 2010 on
     "vix": "^VIX",
     "oil": "CL=F",
+    "spx": "^GSPC",     # S&P 500, for the risk-off / growth shock channels
 }
 
 # Instrument the dashboard, brief and trade builder use unless another is picked
@@ -48,7 +49,14 @@ FRED_SERIES = {
     "nominal_2y": "DGS2",         # 2Y Treasury yield, % (Fed expectations)
     "breakeven_10y": "T10YIE",    # 10Y breakeven inflation, %
     "fed_funds": "DFF",           # Effective fed funds rate, %
+    "fed_target_upper": "DFEDTARU",   # Fed funds target, upper bound (Dec 2008 on): dates Fed moves
+    "fed_target_old": "DFEDTAR",      # Fed funds target before Dec 2008
 }
+
+# Caldara & Iacoviello geopolitical risk index, daily (1985 on; 1985-2019 = 100).
+# Free for research; cite Caldara and Iacoviello (2022), "Measuring Geopolitical
+# Risk", American Economic Review. https://www.matteoiacoviello.com/gpr.htm
+GPR_DAILY_URL = "https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls"
 
 # CFTC disaggregated futures-only report, COMEX silver and gold
 CFTC_DISAGG_URL = "https://publicreporting.cftc.gov/resource/72hh-3qpy.json"

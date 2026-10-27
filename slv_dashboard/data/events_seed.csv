@@ -1,0 +1,44 @@
+date,category,type,title,region,source
+1986-04-15,geopolitics,military_strike,US bombing of Libya,Middle East & N. Africa,GPR dataset (event day)
+1990-08-02,geopolitics,war_onset,Iraq invades Kuwait,Middle East & N. Africa,seed
+1991-01-17,geopolitics,war_onset,Gulf War air campaign (Desert Storm) begins,Middle East & N. Africa,GPR dataset (event day)
+2001-09-11,geopolitics,terror_attack,September 11 attacks,United States,seed
+2001-10-07,geopolitics,war_onset,US-led invasion of Afghanistan begins,Asia,GPR dataset (event day)
+2002-09-13,geopolitics,war_threat,US seeks UN approval for Iraq war; Russia threatens Georgia,Global,GPR dataset
+2003-02-14,geopolitics,war_threat,US/Iraq war fears; UK terror alert; North Korea tension,Global,GPR dataset
+2003-03-20,geopolitics,war_onset,Iraq War begins,Middle East & N. Africa,GPR dataset (event day)
+2004-08-03,geopolitics,terror_threat,Terror threat alerts in New York and Washington,United States,GPR dataset
+2005-07-07,geopolitics,terror_attack,London bombings,Europe,GPR dataset (event day)
+2008-09-15,financial,financial_crisis,Lehman Brothers bankruptcy,United States,seed
+2008-11-25,fed,qe,Fed announces QE1 (MBS and agency purchases),United States,seed
+2010-11-03,fed,qe,Fed announces QE2,United States,seed
+2011-04-25,market,margin_hike,CME begins a series of silver margin hikes (late Apr-May),United States,seed
+2011-08-05,macro,sovereign_downgrade,S&P downgrades the US credit rating,United States,seed
+2012-09-13,fed,qe,Fed announces QE3,United States,seed
+2013-04-12,market,crash,Gold and silver crash begins (Apr 12-15),Global,seed
+2013-05-22,fed,taper,Bernanke signals QE taper (taper tantrum),United States,seed
+2014-03-18,geopolitics,annexation,Russia annexes Crimea,Europe,seed
+2015-11-13,geopolitics,terror_attack,Paris attacks,Europe,GPR dataset (event day)
+2016-06-23,geopolitics,election,Brexit referendum,Europe,seed
+2016-11-08,geopolitics,election,US presidential election,United States,seed
+2017-09-03,geopolitics,weapons_test,North Korea's sixth nuclear test,Asia,seed
+2018-03-22,trade,tariff,US announces Section 301 tariffs on China,US-China,seed
+2018-07-06,trade,tariff,First US-China tariffs take effect,US-China,seed
+2019-05-05,trade,tariff,US announces higher tariffs on China (escalation),US-China,seed
+2019-08-05,trade,currency,Yuan breaks 7; US labels China a currency manipulator,US-China,seed
+2019-09-14,geopolitics,oil_disruption,Drone attack on Saudi Abqaiq oil facilities,Middle East & N. Africa,seed
+2020-01-03,geopolitics,military_strike,US strike kills Iran's Soleimani,Middle East & N. Africa,GPR dataset (event day)
+2020-03-11,macro,pandemic,WHO declares COVID-19 a pandemic,Global,seed
+2020-03-23,fed,qe,Fed announces open-ended QE,United States,seed
+2021-02-01,market,squeeze,#silversqueeze retail buying spike,Global,seed
+2022-02-24,geopolitics,war_onset,Russia invades Ukraine,Europe,GPR dataset (event day)
+2022-02-26,geopolitics,sanctions,Western sanctions freeze Russia's central bank reserves,Europe,seed
+2023-03-10,financial,bank_failure,Silicon Valley Bank fails,United States,seed
+2023-10-07,geopolitics,war_onset,Hamas attack on Israel; Gaza war begins,Middle East & N. Africa,seed
+2024-04-13,geopolitics,military_strike,Iran missile and drone attack on Israel,Middle East & N. Africa,seed
+2024-11-05,geopolitics,election,US presidential election,United States,seed
+2025-04-02,trade,tariff,US 'Liberation Day' tariffs announced,Global,seed
+2025-06-13,geopolitics,military_strike,Israel strikes Iran,Middle East & N. Africa,seed
+2025-06-21,geopolitics,military_strike,US strikes Iranian nuclear sites,Middle East & N. Africa,seed
+2025-10-09,market,squeeze,London silver liquidity squeeze; lease rates spike (approx. date),Europe,seed
+2026-01-30,market,crash,Silver crashes from its record; margin-driven liquidation,Global,price data + FXEmpire

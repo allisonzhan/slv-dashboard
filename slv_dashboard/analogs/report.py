@@ -11,6 +11,7 @@ instrument has none of its own.
 
 import pandas as pd
 
+from slv_dashboard import events
 from slv_dashboard.analogs import backtest, engine, setups
 from slv_dashboard.config import ANALOG_BACKTEST_INSTRUMENTS, DEFAULT_INSTRUMENT
 from slv_dashboard.data import cache, dataset
@@ -35,7 +36,7 @@ def run(target: str = DEFAULT_INSTRUMENT, backtest_instruments: list[str] = ANAL
         paths = res.paths.copy()
         paths.columns = [f"{d:%Y-%m-%d}" for d in paths.columns]
         cache.save_table("analog_paths", paths)
-    scan = setups.scan(ctx)
+    scan = setups.scan(ctx, setups.SETUPS + events.event_setups(events.catalogue(daily)))
     cache.save_table("setups", scan)
     out["setups"] = scan
 

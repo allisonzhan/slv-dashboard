@@ -42,7 +42,9 @@ Loaders pull the full history. The driver models and main panels use 2010 on, an
 | Series | Source | History |
 |---|---|---|
 | Silver, gold, copper, oil futures | yfinance (`SI=F`, `GC=F`, `HG=F`, `CL=F`) | 2000 on |
-| SLV, GLD, IAU, silver miners, VIX | yfinance (`SLV`, `GLD`, `IAU`, `SIL`, `^VIX`) | GLD 2004, IAU 2005, SLV 2006, SIL 2010 on |
+| SLV, GLD, IAU, silver miners, VIX, S&P 500 | yfinance (`SLV`, `GLD`, `IAU`, `SIL`, `^VIX`, `^GSPC`) | GLD 2004, IAU 2005, SLV 2006, SIL 2010 on |
+| Geopolitical risk index | Caldara & Iacoviello GPR, daily | 1985 on |
+| Fed moves | FRED fed funds target (`DFEDTAR`, `DFEDTARU`) | every hike and cut |
 | 10Y real yield, broad dollar, 2Y yield, breakevens, fed funds | FRED (`DFII10`, `DTWEXBGS`, `DGS2`, `T10YIE`, `DFF`) | 2003/2006 on |
 | Positioning | CFTC disaggregated COT, COMEX silver and gold | 2006 on, weekly |
 | SLV ounces in trust | iShares product page | Today only; builds up with each daily refresh |
@@ -83,6 +85,28 @@ Pick the instrument at the top of the dashboard: **SLV** (default), **silver fut
 - **IAU and futures borrow IV.** IAU and the futures use the liquid ETF's implied vol for their metal (GLD or SLV), since it's the same underlying.
 - **Backtests.** The nightly walk-forward backtest runs for SLV and GLD (`ANALOG_BACKTEST_INSTRUMENTS`). Other instruments show their metal's backtest, labelled as such.
 
+## News & Events
+
+One tab for everything that moves metals on the news: the Fed, macro data, geopolitics, trade policy, supply and market events, with a category filter.
+
+- **Shock channel** (`models/channels.py`): what kind of shock the market is trading. It is read from 4-week cross-asset moves (gold, oil, copper, S&P 500, dollar, VIX, real yields, the 2Y, breakevens), each scaled by its own history.
+  - The channels are haven, inflation, hawkish, dovish, risk-off and growth. A channel is named when it scores at least 1.0; otherwise the week is "quiet".
+  - This matters because the same headline can cut either way. A war can bring a haven bid, or an oil-driven inflation shock that pushes the Fed and the dollar against metals, as Hormuz did in 2026.
+- **Geopolitical risk index**: Caldara & Iacoviello's daily GPR index (1985 on, free for research), lagged one day.
+- **Event catalogue** (`events.py`):
+  - a curated seed in `slv_dashboard/data/events_seed.csv`: wars, attacks, sanctions, tariffs, elections, QE/taper, margin hikes, squeezes and crises, including the GPR dataset's annotated spikes;
+  - every Fed hike and cut, from FRED's target series;
+  - market-detected shocks: GPR spikes, oil spikes and crashes, VIX spikes;
+  - your own additions in `data/imports/events.csv`.
+- **Event studies**: for the picked instrument, the median path around past events of a type against the base drift, the outcome statistics, and each episode with the shock channel at the time.
+- **After each kind of shock**: forward returns after each channel's past episodes. This checks the "usual read" against history.
+- **Plumbing**:
+  - Every event type and channel is also a named setup, so it shows in the setup scanner and as a live setup in the brief.
+  - The analog engine has a fourth input group, **events** (GPR level and change, oil move, VIX), and a "same shock channel" filter.
+  - Two new alerts: elevated geopolitical risk, and an active shock channel.
+
+Cite the GPR data as: Caldara, D. and M. Iacoviello (2022), "Measuring Geopolitical Risk", *American Economic Review* 112(4).
+
 ## Historical analogs
 
 ```bash
@@ -91,7 +115,7 @@ python -m slv_dashboard.analogs.report   # current analogs, setup scan, walk-for
 
 "Silver is here, momentum is X, positioning is Y: when did this happen before, and what happened next?"
 
-- **State vector** (`analogs/features.py`), one row per week, built with no look-ahead. *Technical*: distance from the 50/200-day MAs, 4/13/26-week returns, RSI, Bollinger %b, drawdown from the 52-week high, vol percentile. *Macro*: 13-week change in real yields, the dollar, gold and copper, plus the gold/silver ratio z-score. *Positioning*: managed-money percentile and 4-week change. Groups can be switched off, e.g. for price-only analogs.
+- **State vector** (`analogs/features.py`), one row per week, built with no look-ahead. *Events* (see News & Events): geopolitical risk level and 4-week change, the oil move, the VIX percentile. *Technical*: distance from the 50/200-day MAs, 4/13/26-week returns, RSI, Bollinger %b, drawdown from the 52-week high, vol percentile. *Macro*: 13-week change in real yields, the dollar, gold and copper, plus the gold/silver ratio z-score. *Positioning*: managed-money percentile and 4-week change. Groups can be switched off, e.g. for price-only analogs.
 - **Matching** (`analogs/engine.py`) combines state distance (standardised against earlier weeks only, each group weighted equally) with path shape (correlation of the last 60 days of price). A candidate's forward window must end before today. Analogs are de-clustered (one per 8 weeks) so one episode can't fill the list.
 - **Outcomes** at 1, 4, 13 and 26 weeks: hit rate, median and IQR, max adverse/favourable excursion (for stops and targets), forward realised vol (for options). Each is shown **against the base rate** over the same history, with a bootstrap p-value.
 - **Targets**: any instrument (SLV, silver futures, GLD, IAU, gold futures), plus the gold/silver ratio, SLV/SIL and silver/copper, so ratio and spread trades use the same engine.
@@ -191,5 +215,6 @@ reports/                Generated briefs and chart packs (git-ignored)
 - [x] Phase 8: fair-value model, gold/silver ratio bands, scorecard, trade plan and pitch draft
 - [x] Phase 9: snapshot for the agent, news triage, brief and chart-pack export, Claude Code skills, silver playbook
 - [x] Instrument picker: SLV (default), silver futures, GLD, IAU, gold futures, with gold COT, gold fair value and GLD options
+- [x] News & Events: shock-channel classifier, geopolitical risk index, event catalogue and event studies
 - [ ] Anthropic API agent (`agent.py`) so the brief drafts itself after the nightly refresh
 - [ ] Shanghai premium and LBMA vault data; COMEX parser check against a real CME file
