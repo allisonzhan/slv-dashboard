@@ -1,131 +1,131 @@
 {
   "schema_version": 1,
-  "as_of": "2026-10-28",
+  "as_of": "2026-10-30",
   "headline": {
-    "silver": 53.41,
-    "silver_1w_change": -4.012001,
-    "silver_4w_change": -6.688,
-    "gold_silver_ratio": 75.925856,
-    "stance": "bullish",
-    "score": 3
+    "silver": 49.134998,
+    "silver_1w_change": -4.576,
+    "silver_4w_change": -10.842003,
+    "gold_silver_ratio": 79.06584,
+    "stance": "neutral",
+    "score": 2
   },
   "what_changed": [
     {
       "Series": "Silver ($/oz)",
-      "Latest": "53.41",
-      "1w change": "-4.01",
-      "4w change": "-6.69",
-      "Percentile": "95%",
-      "As of": "Oct 28"
+      "Latest": "49.13",
+      "1w change": "-4.58",
+      "4w change": "-10.84",
+      "Percentile": "94%",
+      "As of": "Oct 30"
     },
     {
       "Series": "Gold ($/oz)",
-      "Latest": "4,055",
-      "1w change": "-95",
-      "4w change": "-132",
+      "Latest": "3,885",
+      "1w change": "-123",
+      "4w change": "-277",
       "Percentile": "94%",
-      "As of": "Oct 28"
+      "As of": "Oct 30"
     },
     {
       "Series": "Gold/silver ratio",
-      "Latest": "75.9",
-      "1w change": "+3.7",
-      "4w change": "+6.3",
-      "Percentile": "55%",
-      "As of": "Oct 28"
+      "Latest": "79.1",
+      "1w change": "+4.4",
+      "4w change": "+9.7",
+      "Percentile": "64%",
+      "As of": "Oct 30"
     },
     {
       "Series": "Copper ($/lb)",
-      "Latest": "6.644",
-      "1w change": "+0.101",
-      "4w change": "+0.085",
-      "Percentile": "100%",
-      "As of": "Oct 28"
+      "Latest": "6.510",
+      "1w change": "+0.034",
+      "4w change": "+0.017",
+      "Percentile": "99%",
+      "As of": "Oct 30"
     },
     {
       "Series": "10Y real yield",
-      "Latest": "2.64%",
-      "1w change": "-0.12",
+      "Latest": "2.63%",
+      "1w change": "-0.03",
       "4w change": "-0.29",
       "Percentile": "99%",
-      "As of": "Oct 28"
+      "As of": "Oct 30"
     },
     {
       "Series": "2Y Treasury",
-      "Latest": "4.70%",
-      "1w change": "-0.11",
-      "4w change": "-0.18",
-      "Percentile": "95%",
-      "As of": "Oct 28"
+      "Latest": "4.61%",
+      "1w change": "-0.08",
+      "4w change": "-0.22",
+      "Percentile": "94%",
+      "As of": "Oct 30"
     },
     {
       "Series": "10Y breakeven",
-      "Latest": "2.38%",
-      "1w change": "+0.01",
-      "4w change": "+0.02",
-      "Percentile": "85%",
-      "As of": "Oct 28"
+      "Latest": "2.34%",
+      "1w change": "+0.00",
+      "4w change": "-0.02",
+      "Percentile": "79%",
+      "As of": "Oct 30"
     },
     {
       "Series": "Broad dollar",
       "Latest": "121.3",
-      "1w change": "-0.0",
-      "4w change": "+0.4",
+      "1w change": "+0.0",
+      "4w change": "-0.1",
       "Percentile": "87%",
-      "As of": "Oct 28"
+      "As of": "Oct 30"
     },
     {
       "Series": "VIX",
-      "Latest": "16.9",
-      "1w change": "+0.2",
-      "4w change": "+0.6",
-      "Percentile": "52%",
-      "As of": "Oct 28"
+      "Latest": "19.4",
+      "1w change": "-0.0",
+      "4w change": "+4.1",
+      "Percentile": "69%",
+      "As of": "Oct 30"
     },
     {
       "Series": "Managed money net (% OI)",
-      "Latest": "3.1",
-      "1w change": "-2.1",
-      "4w change": "-9.4",
-      "Percentile": "18%",
-      "As of": "Oct 23"
+      "Latest": "2.9",
+      "1w change": "-0.2",
+      "4w change": "-4.3",
+      "Percentile": "17%",
+      "As of": "Oct 30"
     },
     {
       "Series": "SLV ounces (M)",
-      "Latest": "499.7",
-      "1w change": "",
+      "Latest": "503.0",
+      "1w change": "+4.7",
       "4w change": "",
       "Percentile": "100%",
-      "As of": "Oct 28"
+      "As of": "Oct 30"
     }
   ],
   "regime": {
     "monetary_industrial_52w": "industrial",
-    "copper_share_pctile": 0.847273,
-    "volatility": "calm",
-    "p_stressed": 0.330309,
+    "copper_share_pctile": 0.83414,
+    "volatility": "stressed",
+    "p_stressed": 0.957172,
     "betas_52w": {
-      "real_yield_chg": -0.075947,
-      "dollar_ret": -0.537621,
-      "copper_ret": 1.893881,
-      "r2": 0.446314
+      "real_yield_chg": -0.059732,
+      "dollar_ret": -0.663075,
+      "copper_ret": 1.894496,
+      "r2": 0.432544
     },
     "full_sample_betas": {
-      "real_yield_chg": -0.057787,
-      "dollar_ret": -1.919345,
-      "copper_ret": 0.460164
+      "real_yield_chg": -0.057441,
+      "dollar_ret": -1.921321,
+      "copper_ret": 0.459566
     }
   },
   "alerts": [
     {
       "level": "info",
-      "title": "Silver unusually sensitive to copper",
-      "detail": "52-week copper beta 1.89 vs. 0.46 full sample: industrial demand story is driving price"
+      "title": "Volatility regime changed to stressed",
+      "detail": "Since the week of Oct 16, previously calm"
     },
     {
       "level": "info",
-      "title": "Historical analogs lean higher",
-      "detail": "13w median +7.7% vs. base +1.6% (p = 0.08). Check the track record before leaning on it."
+      "title": "Silver unusually sensitive to copper",
+      "detail": "52-week copper beta 1.89 vs. 0.46 full sample: industrial demand story is driving price"
     },
     {
       "level": "info",
@@ -139,85 +139,85 @@
     }
   ],
   "analogs": {
-    "query_date": "2026-10-28",
+    "query_date": "2026-10-30",
     "n_candidates": 987,
-    "now": "13w -7%, RSI 30, real yld +23bp/13w, USD +0.6%/13w, GSR z -0.4, MM 15% pctile",
+    "now": "13w -16%, RSI 22, real yld +22bp/13w, USD +1.4%/13w, GSR z -0.1, MM 15% pctile",
     "outcomes": {
       "1": {
         "n": 20.0,
-        "hit_rate": 0.7,
-        "mean": -0.001067,
-        "median": 0.011211,
-        "q25": -0.01167,
-        "q75": 0.022161,
-        "mae_median": -0.006313,
-        "mae_q25": -0.029103,
-        "mfe_median": 0.021231,
-        "mfe_q75": 0.035599,
-        "fwd_vol_median": 0.26109,
+        "hit_rate": 0.75,
+        "mean": 0.009183,
+        "median": 0.012134,
+        "q25": 0.004043,
+        "q75": 0.019333,
+        "mae_median": -0.001778,
+        "mae_q25": -0.021962,
+        "mfe_median": 0.022233,
+        "mfe_q75": 0.0364,
+        "fwd_vol_median": 0.255539,
         "base_hit_rate": 0.52668,
         "base_median": 0.002384,
-        "base_fwd_vol_median": 0.24954,
-        "edge_median": 0.008827,
-        "edge_hit_rate": 0.17332,
-        "p_value": 0.356
+        "base_fwd_vol_median": 0.249821,
+        "edge_median": 0.009749,
+        "edge_hit_rate": 0.22332,
+        "p_value": 0.313
       },
       "4": {
         "n": 20.0,
-        "hit_rate": 0.6,
-        "mean": 0.038091,
-        "median": 0.032241,
-        "q25": -0.018031,
-        "q75": 0.108939,
+        "hit_rate": 0.7,
+        "mean": 0.054988,
+        "median": 0.033233,
+        "q25": -0.007219,
+        "q75": 0.09491,
         "mae_median": -0.021747,
-        "mae_q25": -0.054927,
-        "mfe_median": 0.058138,
-        "mfe_q75": 0.120361,
-        "fwd_vol_median": 0.275061,
+        "mae_q25": -0.039828,
+        "mfe_median": 0.063832,
+        "mfe_q75": 0.115408,
+        "fwd_vol_median": 0.266327,
         "base_hit_rate": 0.524281,
         "base_median": 0.005352,
         "base_fwd_vol_median": 0.273307,
-        "edge_median": 0.026889,
-        "edge_hit_rate": 0.075719,
-        "p_value": 0.2255
+        "edge_median": 0.027882,
+        "edge_hit_rate": 0.175719,
+        "p_value": 0.2075
       },
       "13": {
         "n": 20.0,
         "hit_rate": 0.7,
-        "mean": 0.044744,
-        "median": 0.077169,
-        "q25": -0.033823,
-        "q75": 0.116735,
+        "mean": 0.049126,
+        "median": 0.050285,
+        "q25": -0.020195,
+        "q75": 0.118861,
         "mae_median": -0.034169,
-        "mae_q25": -0.117861,
-        "mfe_median": 0.130757,
-        "mfe_q75": 0.253176,
-        "fwd_vol_median": 0.278807,
+        "mae_q25": -0.084658,
+        "mfe_median": 0.128342,
+        "mfe_q75": 0.255349,
+        "fwd_vol_median": 0.281262,
         "base_hit_rate": 0.542,
         "base_median": 0.015803,
         "base_fwd_vol_median": 0.287147,
-        "edge_median": 0.061366,
+        "edge_median": 0.034482,
         "edge_hit_rate": 0.158,
-        "p_value": 0.0755
+        "p_value": 0.3245
       },
       "26": {
         "n": 20.0,
         "hit_rate": 0.6,
-        "mean": 0.055032,
-        "median": 0.031152,
-        "q25": -0.054903,
+        "mean": 0.081656,
+        "median": 0.058926,
+        "q25": -0.02523,
         "q75": 0.148457,
-        "mae_median": -0.057212,
-        "mae_q25": -0.153698,
-        "mfe_median": 0.161016,
-        "mfe_q75": 0.274321,
-        "fwd_vol_median": 0.273752,
+        "mae_median": -0.055828,
+        "mae_q25": -0.106346,
+        "mfe_median": 0.178285,
+        "mfe_q75": 0.303328,
+        "fwd_vol_median": 0.281894,
         "base_hit_rate": 0.561297,
         "base_median": 0.029696,
         "base_fwd_vol_median": 0.296152,
-        "edge_median": 0.001457,
+        "edge_median": 0.02923,
         "edge_hit_rate": 0.038703,
-        "p_value": 0.972
+        "p_value": 0.538
       }
     },
     "matches": [
@@ -225,43 +225,34 @@
         "date": "2011-12-30",
         "episode": "2011 blow-off top and margin hikes",
         "context": "13w -7%, RSI 36, real yld -23bp/13w, USD +1.5%/13w, GSR z -0.2, MM 3% pctile",
-        "shape_corr": 0.782638,
+        "shape_corr": 0.743229,
         "fwd_4w": 0.210655,
         "fwd_13w": 0.164807,
         "fwd_26w": -0.010583
       },
       {
-        "date": "2012-05-04",
+        "date": "2012-05-11",
         "episode": "",
-        "context": "13w -10%, RSI 42, real yld -2bp/13w, USD +1.1%/13w, GSR z -0.2, MM 7% pctile",
-        "shape_corr": 0.784118,
-        "fwd_4w": -0.061982,
-        "fwd_13w": -0.085253,
-        "fwd_26w": 0.014977
+        "context": "13w -14%, RSI 33, real yld -7bp/13w, USD +2.3%/13w, GSR z -0.1, MM 4% pctile",
+        "shape_corr": 0.796089,
+        "fwd_4w": -0.013757,
+        "fwd_13w": -0.027826,
+        "fwd_26w": 0.129323
       },
       {
-        "date": "2013-12-13",
-        "episode": "Post-QE bear market",
-        "context": "13w -11%, RSI 42, real yld -9bp/13w, USD -0.2%/13w, GSR z +1.4, MM 3% pctile",
-        "shape_corr": 0.818236,
-        "fwd_4w": 0.032824,
-        "fwd_13w": 0.093307,
-        "fwd_26w": 0.003988
-      },
-      {
-        "date": "2021-09-24",
-        "episode": "",
-        "context": "13w -14%, RSI 36, real yld -3bp/13w, USD +1.2%/13w, GSR z -0.4, MM 11% pctile",
-        "shape_corr": 0.628754,
-        "fwd_4w": 0.091165,
-        "fwd_13w": 0.024254,
-        "fwd_26w": 0.143246
+        "date": "2013-05-17",
+        "episode": "April 2013 crash / taper tantrum",
+        "context": "13w -28%, RSI 29, real yld +23bp/13w, USD +2.1%/13w, GSR z +1.1, MM 2% pctile",
+        "shape_corr": 0.863261,
+        "fwd_4w": -0.017279,
+        "fwd_13w": 0.04378,
+        "fwd_26w": -0.072609
       },
       {
         "date": "2015-07-24",
         "episode": "Post-QE bear market",
         "context": "13w -8%, RSI 26, real yld +39bp/13w, USD +2.3%/13w, GSR z +1.5, MM 0% pctile",
-        "shape_corr": 0.886969,
+        "shape_corr": 0.92314,
         "fwd_4w": 0.056918,
         "fwd_13w": 0.09263,
         "fwd_26w": -0.029979
@@ -270,97 +261,115 @@
         "date": "2008-08-29",
         "episode": "GFC deleveraging",
         "context": "13w -17%, RSI 34, real yld +6bp/13w, USD +4.0%/13w, GSR z +1.8, MM 10% pctile",
-        "shape_corr": 0.825701,
+        "shape_corr": 0.805652,
         "fwd_4w": -0.01095,
         "fwd_13w": -0.251488,
         "fwd_26w": -0.038363
       },
       {
-        "date": "2013-04-12",
-        "episode": "April 2013 crash / taper tantrum",
-        "context": "13w -13%, RSI 30, real yld -8bp/13w, USD +0.8%/13w, GSR z +0.6, MM 1% pctile",
-        "shape_corr": 0.710578,
-        "fwd_4w": -0.102196,
-        "fwd_13w": -0.248575,
-        "fwd_26w": -0.19402
-      },
-      {
-        "date": "2023-02-24",
-        "episode": "",
-        "context": "13w -1%, RSI 27, real yld +0bp/13w, USD -1.8%/13w, GSR z +0.5, MM 19% pctile",
-        "shape_corr": 0.721306,
-        "fwd_4w": 0.117322,
-        "fwd_13w": 0.116985,
-        "fwd_26w": 0.164087
-      },
-      {
-        "date": "2012-06-29",
-        "episode": "",
-        "context": "13w -13%, RSI 47, real yld -35bp/13w, USD +2.5%/13w, GSR z +0.3, MM 1% pctile",
-        "shape_corr": 0.622667,
-        "fwd_4w": -0.003698,
-        "fwd_13w": 0.251523,
-        "fwd_26w": 0.084844
-      },
-      {
-        "date": "2013-06-07",
-        "episode": "April 2013 crash / taper tantrum",
-        "context": "13w -24%, RSI 34, real yld +64bp/13w, USD +0.1%/13w, GSR z +1.5, MM 2% pctile",
-        "shape_corr": 0.611487,
-        "fwd_4w": -0.13852,
-        "fwd_13w": 0.096839,
-        "fwd_26w": -0.104522
-      },
-      {
-        "date": "2014-09-12",
+        "date": "2013-12-13",
         "episode": "Post-QE bear market",
-        "context": "13w -3%, RSI 23, real yld +6bp/13w, USD +2.2%/13w, GSR z +1.5, MM 6% pctile",
-        "shape_corr": 0.875018,
-        "fwd_4w": -0.069772,
-        "fwd_13w": -0.082336,
-        "fwd_26w": -0.16548
+        "context": "13w -11%, RSI 42, real yld -9bp/13w, USD -0.2%/13w, GSR z +1.4, MM 3% pctile",
+        "shape_corr": 0.840282,
+        "fwd_4w": 0.032824,
+        "fwd_13w": 0.093307,
+        "fwd_26w": 0.003988
+      },
+      {
+        "date": "2021-09-24",
+        "episode": "",
+        "context": "13w -14%, RSI 36, real yld -3bp/13w, USD +1.2%/13w, GSR z -0.4, MM 11% pctile",
+        "shape_corr": 0.7161,
+        "fwd_4w": 0.091165,
+        "fwd_13w": 0.024254,
+        "fwd_26w": 0.143246
+      },
+      {
+        "date": "2014-10-03",
+        "episode": "Post-QE bear market",
+        "context": "13w -21%, RSI 19, real yld +14bp/13w, USD +5.1%/13w, GSR z +2.3, MM 1% pctile",
+        "shape_corr": 0.897588,
+        "fwd_4w": -0.041895,
+        "fwd_13w": -0.062336,
+        "fwd_26w": -0.005602
       },
       {
         "date": "2018-08-17",
         "episode": "Strong-dollar 2018 lows",
         "context": "13w -10%, RSI 32, real yld -13bp/13w, USD +2.9%/13w, GSR z +1.3, MM 1% pctile",
-        "shape_corr": 0.864644,
+        "shape_corr": 0.912717,
         "fwd_4w": -0.039272,
         "fwd_13w": -0.017652,
         "fwd_26w": 0.075739
       },
       {
-        "date": "2015-12-31",
+        "date": "2013-07-19",
         "episode": "Post-QE bear market",
-        "context": "13w -5%, RSI 42, real yld +7bp/13w, USD +1.6%/13w, GSR z +1.5, MM 22% pctile",
-        "shape_corr": 0.603453,
-        "fwd_4w": 0.032958,
-        "fwd_13w": 0.091978,
-        "fwd_26w": 0.418802
-      },
-      {
-        "date": "2011-07-01",
-        "episode": "2011 blow-off top and margin hikes",
-        "context": "13w -10%, RSI 39, real yld -23bp/13w, USD -2.1%/13w, GSR z -1.5, MM 16% pctile",
-        "shape_corr": 0.614792,
-        "fwd_4w": 0.189885,
-        "fwd_13w": -0.108417,
-        "fwd_26w": -0.172701
+        "context": "13w -17%, RSI 42, real yld +93bp/13w, USD +1.5%/13w, GSR z +1.9, MM 6% pctile",
+        "shape_corr": 0.809211,
+        "fwd_4w": 0.198941,
+        "fwd_13w": 0.124486,
+        "fwd_26w": 0.042112
       },
       {
         "date": "2010-02-05",
         "episode": "",
         "context": "13w -10%, RSI 27, real yld -9bp/13w, USD +2.3%/13w, GSR z +1.1, MM 35% pctile",
-        "shape_corr": 0.594223,
+        "shape_corr": 0.619301,
         "fwd_4w": 0.171288,
         "fwd_13w": 0.243271,
         "fwd_26w": 0.245294
       },
       {
+        "date": "2022-07-22",
+        "episode": "2022 Fed hiking cycle",
+        "context": "13w -27%, RSI 32, real yld +43bp/13w, USD +4.5%/13w, GSR z +1.0, MM 3% pctile",
+        "shape_corr": 0.837295,
+        "fwd_4w": 0.025451,
+        "fwd_13w": 0.024644,
+        "fwd_26w": 0.282217
+      },
+      {
+        "date": "2015-12-31",
+        "episode": "Post-QE bear market",
+        "context": "13w -5%, RSI 42, real yld +7bp/13w, USD +1.6%/13w, GSR z +1.5, MM 22% pctile",
+        "shape_corr": 0.670558,
+        "fwd_4w": 0.032958,
+        "fwd_13w": 0.091978,
+        "fwd_26w": 0.418802
+      },
+      {
+        "date": "2012-07-06",
+        "episode": "",
+        "context": "13w -19%, RSI 43, real yld -47bp/13w, USD +3.9%/13w, GSR z +0.4, MM 6% pctile",
+        "shape_corr": 0.635367,
+        "fwd_4w": 0.033508,
+        "fwd_13w": 0.283648,
+        "fwd_26w": 0.11183
+      },
+      {
+        "date": "2013-02-22",
+        "episode": "",
+        "context": "13w -12%, RSI 29, real yld +24bp/13w, USD +0.1%/13w, GSR z +0.3, MM 21% pctile",
+        "shape_corr": 0.437783,
+        "fwd_4w": 0.00738,
+        "fwd_13w": -0.209938,
+        "fwd_26w": -0.165976
+      },
+      {
+        "date": "2023-02-24",
+        "episode": "",
+        "context": "13w -1%, RSI 27, real yld +0bp/13w, USD -1.8%/13w, GSR z +0.5, MM 19% pctile",
+        "shape_corr": 0.683226,
+        "fwd_4w": 0.117322,
+        "fwd_13w": 0.116985,
+        "fwd_26w": 0.164087
+      },
+      {
         "date": "2023-06-23",
         "episode": "",
         "context": "13w +0%, RSI 34, real yld +17bp/13w, USD -1.4%/13w, GSR z +1.0, MM 25% pctile",
-        "shape_corr": 0.707292,
+        "shape_corr": 0.736223,
         "fwd_4w": 0.106145,
         "fwd_13w": 0.05679,
         "fwd_26w": 0.087872
@@ -369,37 +378,28 @@
         "date": "2014-05-09",
         "episode": "Post-QE bear market",
         "context": "13w -4%, RSI 39, real yld -12bp/13w, USD -1.4%/13w, GSR z +1.8, MM 4% pctile",
-        "shape_corr": 0.696672,
+        "shape_corr": 0.75233,
         "fwd_4w": -0.005976,
         "fwd_13w": 0.043246,
         "fwd_26w": -0.177072
       },
       {
-        "date": "2007-08-24",
+        "date": "2007-08-17",
         "episode": "",
-        "context": "13w -9%, RSI 41, real yld -10bp/13w, USD -0.8%/13w, GSR z +0.0, MM 2% pctile",
-        "shape_corr": 0.564957,
-        "fwd_4w": 0.129895,
-        "fwd_13w": 0.233962,
-        "fwd_26w": 0.51153
+        "context": "13w -8%, RSI 33, real yld +7bp/13w, USD -0.5%/13w, GSR z -0.0, MM 3% pctile",
+        "shape_corr": 0.414517,
+        "fwd_4w": 0.065579,
+        "fwd_13w": 0.230292,
+        "fwd_26w": 0.452429
       },
       {
-        "date": "2014-11-07",
-        "episode": "Post-QE bear market",
-        "context": "13w -21%, RSI 29, real yld +19bp/13w, USD +4.6%/13w, GSR z +2.6, MM 3% pctile",
-        "shape_corr": 0.750401,
-        "fwd_4w": 0.031658,
-        "fwd_13w": 0.062361,
-        "fwd_26w": 0.047328
-      },
-      {
-        "date": "2007-06-29",
-        "episode": "",
-        "context": "13w -8%, RSI 34, real yld +48bp/13w, USD -2.4%/13w, GSR z -0.7, MM 5% pctile",
-        "shape_corr": 0.538057,
-        "fwd_4w": 0.023476,
-        "fwd_13w": 0.116652,
-        "fwd_26w": 0.195661
+        "date": "2011-10-14",
+        "episode": "2011 blow-off top and margin hikes",
+        "context": "13w -17%, RSI 43, real yld -40bp/13w, USD +4.3%/13w, GSR z -0.6, MM 11% pctile",
+        "shape_corr": 0.764251,
+        "fwd_4w": 0.078749,
+        "fwd_13w": -0.082358,
+        "fwd_26w": -0.023647
       }
     ]
   },
@@ -428,49 +428,49 @@
     }
   ],
   "valuation": {
-    "read": "Somewhat cheap: -10% vs. fair value (z -1.1).",
-    "fair_value": 59.659797,
-    "z": -1.116826,
-    "residual_pct": -0.104757,
-    "r2": 0.944181,
-    "gsr": 75.925856,
-    "gsr_pctile_3y": 0.314103,
+    "read": "Somewhat cheap: -13% vs. fair value (z -1.4).",
+    "fair_value": 56.383481,
+    "z": -1.385478,
+    "residual_pct": -0.128557,
+    "r2": 0.943831,
+    "gsr": 79.06584,
+    "gsr_pctile_3y": 0.352564,
     "gsr_p10": 62.266142,
     "gsr_p50": 84.764962,
     "gsr_p90": 90.939178
   },
   "positioning": {
-    "mm_net_pct_oi": 3.074777,
-    "change_vs_prior_report": -2.107225,
-    "pctile_history": 0.151786,
-    "released": "2026-10-23"
+    "mm_net_pct_oi": 2.857364,
+    "change_vs_prior_report": -0.217413,
+    "pctile_history": 0.148496,
+    "released": "2026-10-30"
   },
   "curve": {
-    "front": 53.41,
-    "next": 54.005001,
-    "spread": 0.595001,
-    "implied_financing_pct": 4.496091,
-    "implied_lease_pct": -0.616091,
+    "front": 49.134998,
+    "next": 49.75,
+    "spread": 0.615002,
+    "implied_financing_pct": 5.048115,
+    "implied_lease_pct": -1.168115,
     "backwardation": false,
     "front_contract": "SIZ26.CMX",
     "next_contract": "SIH27.CMX"
   },
   "options": {
-    "spot": 49.060001,
-    "days": 29,
-    "atm_iv": 0.379796,
-    "put_10otm_iv": 0.412573,
-    "call_10otm_iv": 0.38814,
-    "skew_call_minus_put": -0.024433,
-    "expected_move_pct": 0.107054,
+    "spot": 44.599998,
+    "days": 27,
+    "atm_iv": 0.439516,
+    "put_10otm_iv": 0.479521,
+    "call_10otm_iv": 0.424619,
+    "skew_call_minus_put": -0.054902,
+    "expected_move_pct": 0.119539,
     "expiry": "2026-11-27",
-    "as_of": "2026-10-29"
+    "as_of": "2026-10-31"
   },
   "scorecard": [
     {
       "lens": "analogs",
-      "score": 1,
-      "reason": "13w analog median +7.7% vs. base +1.6%, up 70% (p 0.08); capped because the walk-forward backtest shows no reliable edge"
+      "score": 0,
+      "reason": "13w analog median +5.0% vs. base +1.6%, up 70% (p 0.32); capped because the walk-forward backtest shows no reliable edge"
     },
     {
       "lens": "setups",
@@ -480,7 +480,7 @@
     {
       "lens": "valuation",
       "score": 1,
-      "reason": "-10% vs. driver fair value (z -1.1)"
+      "reason": "-13% vs. driver fair value (z -1.4)"
     },
     {
       "lens": "positioning",
@@ -490,28 +490,25 @@
     {
       "lens": "macro",
       "score": -1,
-      "reason": "real yields +23bp over 13w, dollar +0.6%"
+      "reason": "real yields +22bp over 13w, dollar +1.4%"
     },
     {
       "lens": "curve",
       "score": 0,
-      "reason": "Normal contango (implied lease -0.6%)"
+      "reason": "Normal contango (implied lease -1.2%)"
     }
   ],
   "trade_plan": {
-    "stance": "bullish",
-    "instrument": "Long SLV (or SI futures) with a hard stop",
-    "rationale": "Options are rich, so own the metal and use a stop. SLV IV 38% vs. analog realised 28%.",
-    "entry": 53.41,
-    "stop": 47.115038,
-    "targets": [
-      60.393723,
-      66.932122
-    ],
+    "stance": "neutral",
+    "instrument": "No trade: wait for a clearer setup",
+    "rationale": "The lenses disagree; the best pitch may be the setup to watch for.",
+    "entry": 49.134998,
+    "stop": null,
+    "targets": [],
     "horizon_weeks": 13,
     "risk_pct_of_book": 1.0,
-    "position_pct_of_book": 0.084846,
-    "reward_risk": 1.109415,
+    "position_pct_of_book": 0.0,
+    "reward_risk": null,
     "invalidation": [
       "Stop level hit on a weekly close",
       "Real yields rise 25bp+ from here",
@@ -534,25 +531,31 @@
   "news": {
     "fed_rates": [
       {
-        "title": "Gold prices squeezed between rising oil and falling yields, Fresnillo silver output declines in 2026 \u2013 Heraeus",
-        "source": "Kitco",
-        "published": "2026-10-26 13:26",
-        "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNcVNMQnZQS3ZmcmtSNElycE9ZX21HblVQbGlDdTI3czFYaGcydnFqV0lmbG9sYTBxMzdXbFlmV01oVUg3alZxcE5UZl9lVVZUN25idXNPNGxWekZPenktaTNiR0xKVW5PT2djQVdsX3hMQUc4TWhhZEtqa0szQjU3aVNJaVVtV05JN1o3UmdkcWhoY2Z2bmdnVl9SY2NfaUxwakJhSDRtZkZVYWNkVV9UaFg4WktLVFItRllRM2NB?oc=5"
+        "title": "Silver Is Falling Despite Lower Treasury Yields and a Persistent Supply Deficit",
+        "source": "Investing.com",
+        "published": "2026-10-30 20:41",
+        "link": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxONk1kY2R0ZkllN3NZY0ZlQkYxQVpXeHRkY21zaV9RUVlLbkhjVF9DM2FNeGVaMnkzU29mU0twOEs3a2tDRnQtRWx3QzJVdTJsMXlKdlBuZkpFaWROeUtwYU0tUkZ2by1jcGFKNEpTZGR1NmJOV0ZNRXRWNnJPbDRnZTB1VllaZ08wTjZxZ2RINXh1Qmg3cEhVTWFDN1p3emh1YXpWTVZJdmNKZzVEVkdvYnFBdkxDU19VbEJ3SXN3ZmZrZw?oc=5"
       },
       {
-        "title": "Gold, silver prices slip ahead of US Fed decision, Israel election results",
-        "source": "Business Standard",
-        "published": "2026-10-28 05:20",
-        "link": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxPMjR5OHg2U0llaU44N2ltdnZXTFBRLVRiWU4xRllpcWc3ZUNxRi1IZ1h1aUJpNWRkSU5rN3ZMZHFXS01KNkhmeW9TeVYzU0ZqakZaT3Q1Z2xpRDF5RzkxM1VBMUJEMXpxVi1ZdWpVX3pYbDhnWkpwc3Iybnl1UGlvOWdjdFFwdGxGMWR5QTBhaEFQWHNDVXhVMElHaXlzVFJwZkFVSFJfM1l0b0xwQkpOLTBLUlgwVk1HcnRlVE5YeVZ4T3N0aGVpQklpcklSVmZ4OXduWFpaT3k4SEdhZy1J0gHkAUFVX3lxTFAwZDBHc1AzaFFmcEJsQXZxeGdfYnpRbDExM2lsY3FqZUV6Y0R2VnFaWUpKcnljb3lleFRFQVJ4bkpidHllcFVqbXdSYy0xQlV1UnpGd3czNjNhNXhHSXNaRXZiNmxTYXNDVXJKSndrdUVpTnNpcjc1R2JLTGpMamdqSnRyMGJIeFd0UEFUSlhFb0xGNWp2VXhfeEJRUDM5ZVpqTXJ1NnlFdlFLQmo2d2xsOWVhZ3J4VHc5MUVEQ0Yyb2RsbU5jZXNPSnpKRzV6eFB4NTkwUXBmWFlHZkRKc3UwZkVOYg?oc=5"
+        "title": "Silver Slips as London Vaults Fill and Fed Tightening Bets Bite - ad-hoc-news.de",
+        "source": "ad-hoc-news.de",
+        "published": "2026-10-30 19:51",
+        "link": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQM2NwT1JGd3V2c3FxNU81Y3dqSHdYMzZubWkwMVNTc3dQZm4zOTZzdkswVnc0OVZhZjg5bkhkcU1SVnYzMVVBTmVhSmhCZVFCb3Atemdxb0dGMzFaWTQxaTNSMGkxQUpJMC1hS1VlM3ltQ0xiSGlRYlZMaEJUeUlwRUM4MkNabFlsN1NIV20zOWxYMkhaTTNZN2FKdTRIaDNCMWdXZE15QmJXMEhIZ013Y3ZlOGFlTGRBWEFxUXc5MVIxVzQ2SlBhX3Q1MURoREtG?oc=5"
       },
       {
-        "title": "Gold (XAUUSD) & Silver Price Forecast: Gold Faces Oil-Fed Rate Fears as Russia Keeps Selling, Can Gold Hold $4,079?",
-        "source": "FXEmpire",
-        "published": "2026-10-22 06:30",
-        "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxOWENSZEEwOVN3QTdvOTlBTDBNZWtWcjMyUXkzcmJWX1ctY3pCNnNfQ0QtRXRpVTkteEIySWktZGV6UFhwc1l2dGREYThJRXdPSFZneTRaMUlrcDk0bk1SZy1jd3dQck9EaW44ek81ZzFrMnp0Wjd2T2pPZkNqam1SOG15djMxSy1fT0tlNXVLRkpkQkFjX3B3ZVpEaVh1QlB6YTdPZ09TbXBwY24tbHlRSWVBc3F1ZzNTb1dzOUhDTTBXWkFEcVBPQmFKYjlSeXVKUFlIS2tObUI2THVpMWR4Rmp1MDkzclNqSnFxZ1Vn?oc=5"
+        "title": "Silver Price Forecast: Supply Deficit vs Fed Pressure",
+        "source": "www.equiti.com",
+        "published": "2026-10-30 18:04",
+        "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxOUm82MG8ydGs2aVBCM1REQ25qeGhpUWYzUVA5U2pyWl9oZkxoSDFVakE5V0hjZVRsOXRmLXlFUnBUMVNNS1YwYzYxUDlXbFo4N3pMMlhGZksxZkRwRHN4SHYwejZ6a1NvTVBZYzE3b3RXdW1iUW5qa1BySDNUdlY1ZW1CSVNTOUNVOGFhWnFFbWtTelByV2dVN085elQ4MXdrWjJV?oc=5"
       }
     ],
     "dollar": [
+      {
+        "title": "Silver/AUD (XAGAUD) Moved Sharply on Oct 30: Inventories, the Dollar, or Geopolitics?",
+        "source": "TradingKey",
+        "published": "2026-10-30 04:10",
+        "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNVmRzSkhscDBlQUd0MkhvYm5hV1A5YjEzRDBwRHprcm5yUU1meTdBbjNNbWZ4Mnk1RTNST1pPSU1GdUNjUzVMX1RKYTZwQWk0dzBFVlUzOFZGbVQyZlFIbTRfelJJVUdKa0JVbmMzWVhvUVNSVzVkWE4ySkVrMnhJcVU0OEVXa09udWhwYV9R?oc=5"
+      },
       {
         "title": "Silver/AUD (XAGAUD) Moved Sharply on Oct 27: Inventories, the Dollar, or Geopolitics?",
         "source": "TradingKey",
@@ -562,22 +565,16 @@
       {
         "title": "Gold and Silver Price Forecast: Dollar Strength Threatens Rebound",
         "source": "FXEmpire",
-        "published": "2026-10-28 06:34",
+        "published": "2026-10-29 08:55",
         "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxQUEFYaWNfSVdLbnFaaGVnZW03TkJYdlZUQjk5R1VCTnlFMUdOLWlDT213MU5NTlR0UGtQYXhsYUdERy1Nc2hzZVU0YTdrQlI5TjBENWtCdTQ4OUUzQ3BHZmFmdnR1dXF2SzRyWlJYalJ5emhRa1pyd3BxOHhMbXlxU2hxaGwxTF81ckdCOUdIZzRCejEtYTJKaTc3ZE5mZ0pOWm5YWm9zY1pRNzRDUFNHOUhRMVZrZw?oc=5"
-      },
-      {
-        "title": "UBS's 70-Dollar Silver Call Rests on AI Demand Outweighing Margin Calls and Solar Cutbacks - ad-hoc-news.de",
-        "source": "ad-hoc-news.de",
-        "published": "2026-10-25 12:02",
-        "link": "https://news.google.com/rss/articles/CBMi9AFBVV95cUxQSGd5WU14b091akJWMWd0TUhna1dTV1FrVmxNWWZ2aW93bkRfanJwWFR6emtuMkFiaWpuLTRibWxwOHRscVp4TGJYTk14anNTNWNIeEd6MFZnZG45dHh1YXdSU2h0VE56YnBrUHFhOXVocV9yb21xMEFBZzNjUzF4eFNrWG9ySzhZUHBGVTBjNEZqUXRKbV80T201b1RKbjh5aWpCM2F6ZnZTSnUxX05FWVpCbTJCTE80QllmZTlsNmRoVWN5RzZDWDREUjBXcFZfR3B5YjN1NHJOZEVlcnBMNzF4MGFHZl83bi1nQTJnaTg5SEtk?oc=5"
       }
     ],
     "geopolitics": [
       {
-        "title": "Gold, silver prices slip ahead of US Fed decision, Israel election results",
-        "source": "Business Standard",
-        "published": "2026-10-28 05:20",
-        "link": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxPMjR5OHg2U0llaU44N2ltdnZXTFBRLVRiWU4xRllpcWc3ZUNxRi1IZ1h1aUJpNWRkSU5rN3ZMZHFXS01KNkhmeW9TeVYzU0ZqakZaT3Q1Z2xpRDF5RzkxM1VBMUJEMXpxVi1ZdWpVX3pYbDhnWkpwc3Iybnl1UGlvOWdjdFFwdGxGMWR5QTBhaEFQWHNDVXhVMElHaXlzVFJwZkFVSFJfM1l0b0xwQkpOLTBLUlgwVk1HcnRlVE5YeVZ4T3N0aGVpQklpcklSVmZ4OXduWFpaT3k4SEdhZy1J0gHkAUFVX3lxTFAwZDBHc1AzaFFmcEJsQXZxeGdfYnpRbDExM2lsY3FqZUV6Y0R2VnFaWUpKcnljb3lleFRFQVJ4bkpidHllcFVqbXdSYy0xQlV1UnpGd3czNjNhNXhHSXNaRXZiNmxTYXNDVXJKSndrdUVpTnNpcjc1R2JLTGpMamdqSnRyMGJIeFd0UEFUSlhFb0xGNWp2VXhfeEJRUDM5ZVpqTXJ1NnlFdlFLQmo2d2xsOWVhZ3J4VHc5MUVEQ0Yyb2RsbU5jZXNPSnpKRzV6eFB4NTkwUXBmWFlHZkRKc3UwZkVOYg?oc=5"
+        "title": "Silver/AUD (XAGAUD) Moved Sharply on Oct 30: Inventories, the Dollar, or Geopolitics?",
+        "source": "TradingKey",
+        "published": "2026-10-30 04:10",
+        "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNVmRzSkhscDBlQUd0MkhvYm5hV1A5YjEzRDBwRHprcm5yUU1meTdBbjNNbWZ4Mnk1RTNST1pPSU1GdUNjUzVMX1RKYTZwQWk0dzBFVlUzOFZGbVQyZlFIbTRfelJJVUdKa0JVbmMzWVhvUVNSVzVkWE4ySkVrMnhJcVU0OEVXa09udWhwYV9R?oc=5"
       },
       {
         "title": "Silver/AUD (XAGAUD) Moved Sharply on Oct 27: Inventories, the Dollar, or Geopolitics?",
@@ -586,10 +583,10 @@
         "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQMHZ0QTh2djAxY1RoWUtITHhqem43SjFJZHFZMk1lU0dCdWlYc2tDb0Vidnp0S1M5V2RWcmFBV2VqQlRZZFZ2eXpkSXpucXRDdlJqeEJ5d2FqQWlMZmhDZ2V6UWVfZGc0WXlpcExWdUVEVFJ6aGgyYk43OGFkR2twaG5JS2dpaThoal9Ea0Zn?oc=5"
       },
       {
-        "title": "Gold (XAUUSD) & Silver Price Forecast: Gold Faces Oil-Fed Rate Fears as Russia Keeps Selling, Can Gold Hold $4,079?",
-        "source": "FXEmpire",
-        "published": "2026-10-22 06:30",
-        "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxOWENSZEEwOVN3QTdvOTlBTDBNZWtWcjMyUXkzcmJWX1ctY3pCNnNfQ0QtRXRpVTkteEIySWktZGV6UFhwc1l2dGREYThJRXdPSFZneTRaMUlrcDk0bk1SZy1jd3dQck9EaW44ek81ZzFrMnp0Wjd2T2pPZkNqam1SOG15djMxSy1fT0tlNXVLRkpkQkFjX3B3ZVpEaVh1QlB6YTdPZ09TbXBwY24tbHlRSWVBc3F1ZzNTb1dzOUhDTTBXWkFEcVBPQmFKYjlSeXVKUFlIS2tObUI2THVpMWR4Rmp1MDkzclNqSnFxZ1Vn?oc=5"
+        "title": "Why gold plunged to its lowest price in a year despite renewed Iran jitters",
+        "source": "MarketWatch",
+        "published": "2026-10-30 21:30",
+        "link": "https://news.google.com/rss/articles/CBMiugFBVV95cUxON0g5UEdUdzM3Y3lfVEUxZGhGZzIwaThRajEzM2twM1R1NGZwTmM2c21yeFllZWJqLTNTdElOTG9UXzBzTHIwZVpQUk93eEt6ZmV1bENDM0diQmhhakczcE80UXJQNDI2MzV0TFdRZmRpRHR2RHkyNmxHZUxHbGxZUkZXTGR3cDdqVkZibjUtLXJDMFZtQTFKWHFDY3FGbE1jOFUwVGhKRnlqZzRwTTlMQl9LVlVLNFpuWHc?oc=5"
       }
     ],
     "china_industrial": [
@@ -600,64 +597,64 @@
         "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxOMXF2c0ZsV29ibmM3eUtKa3laV3lRbzVERG9aV3U5Zk9RTmxnQzU5MXNmVmFONzdMSC1Ic1pMVl9RRXR4dU5pRWFNajhpTnc4VW5GOXlMUkdGTHFmTGYxNEcyY29jTHpTYm41NWdJMnp2a3E0QVhPMnc5RG9ZX0QxX2ppVzMyeHByVnJpMy1qUVg?oc=5"
       },
       {
-        "title": "Solar Panel Recycling and Silver Recovery for Manufacturers",
-        "source": "https://www.mvapulse.com/",
-        "published": "2026-10-27 07:34",
-        "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOTGxVTHczTXp4NjlNR3ZGTXRFZkFNSnRCa0hXd2JWZEY3SHVZYnNmYVR2QU5SSEtidEdZV0lJMndLckVSU21HWVpSS1NTQkVCRElxZXh3OWlOMjBVTU1PYWdoQ05jNTQ4X2JBZ0UxeXREenVfTlNuTFpObElLWW9QLWJOMER6M1F6bUlyaXZB?oc=5"
-      },
-      {
         "title": "Solar\u2019s Silver Problem: Can Recycling Old Panels Ease Pressure on Manufacturers?",
         "source": "Saur Energy",
         "published": "2026-10-27 04:24",
         "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxNRVJYVUx0VVdKamNfVzRUMUxLSF9fcml0U2VuMnNMbHdkTmNacGFrN2xLdktEUU9GejR5Rk9ZUmNXbTVfdjdTOEtySGhlQ1c3V05EOWF3ZERMMklUX0NjWTZKcVcybzdhZGRPYUlueTlwcnM5LTI1UEhQSmNuU3lIeDBRUkhHcER2REtZcFhLVW5UTnlrMUhpODRKek93SVFRbnl1b0czdnp5NHRQT1A4b3d2ZkdjakstMUl0UXZxSG5IRFpkUDFIX09UUQ?oc=5"
+      },
+      {
+        "title": "Silver's Supply Gap Shrinks Just as Chinese Buyers Step In - ad-hoc-news.de",
+        "source": "ad-hoc-news.de",
+        "published": "2026-10-27 10:51",
+        "link": "https://news.google.com/rss/articles/CBMiygFBVV95cUxORFRVLWlpU2J1YVRFQXMzWHdkRVlBUmV6cDlmX0RJQTliT21NNG96Yld3V1BreXpJX0xWaTQ2Vl9kbmlyUS1lRkNyZ1JtVXZQNlBoeWM1aFE3ZVo5aE53ZDJnQ0lMSDlDY0NJT2ZUdno2bVkwbDg0dlBKWVA0MVF4akVfVFh2WFFDMkdZd0tFXzR6UURoT2xKelI2dmRud2I2Yk5icUxuNmRLLTFJQ2otV3oza2tOQzZ4YmRYMGVDMjFJeDNwMmNReElR?oc=5"
       }
     ],
     "solar": [
       {
-        "title": "Solar Panel Recycling and Silver Recovery for Manufacturers",
-        "source": "https://www.mvapulse.com/",
-        "published": "2026-10-27 07:34",
-        "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOTGxVTHczTXp4NjlNR3ZGTXRFZkFNSnRCa0hXd2JWZEY3SHVZYnNmYVR2QU5SSEtidEdZV0lJMndLckVSU21HWVpSS1NTQkVCRElxZXh3OWlOMjBVTU1PYWdoQ05jNTQ4X2JBZ0UxeXREenVfTlNuTFpObElLWW9QLWJOMER6M1F6bUlyaXZB?oc=5"
-      },
-      {
         "title": "Solar\u2019s Silver Problem: Can Recycling Old Panels Ease Pressure on Manufacturers?",
         "source": "Saur Energy",
         "published": "2026-10-27 04:24",
         "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxNRVJYVUx0VVdKamNfVzRUMUxLSF9fcml0U2VuMnNMbHdkTmNacGFrN2xLdktEUU9GejR5Rk9ZUmNXbTVfdjdTOEtySGhlQ1c3V05EOWF3ZERMMklUX0NjWTZKcVcybzdhZGRPYUlueTlwcnM5LTI1UEhQSmNuU3lIeDBRUkhHcER2REtZcFhLVW5UTnlrMUhpODRKek93SVFRbnl1b0czdnp5NHRQT1A4b3d2ZkdjakstMUl0UXZxSG5IRFpkUDFIX09UUQ?oc=5"
       },
       {
-        "title": "UBS's 70-Dollar Silver Call Rests on AI Demand Outweighing Margin Calls and Solar Cutbacks - ad-hoc-news.de",
+        "title": "Silver's Solar Headwind: Photovoltaic Demand Set to Shrink 19% Even as Mine Supply Tightens - ad-hoc-news.de",
         "source": "ad-hoc-news.de",
-        "published": "2026-10-25 12:02",
-        "link": "https://news.google.com/rss/articles/CBMi9AFBVV95cUxQSGd5WU14b091akJWMWd0TUhna1dTV1FrVmxNWWZ2aW93bkRfanJwWFR6emtuMkFiaWpuLTRibWxwOHRscVp4TGJYTk14anNTNWNIeEd6MFZnZG45dHh1YXdSU2h0VE56YnBrUHFhOXVocV9yb21xMEFBZzNjUzF4eFNrWG9ySzhZUHBGVTBjNEZqUXRKbV80T201b1RKbjh5aWpCM2F6ZnZTSnUxX05FWVpCbTJCTE80QllmZTlsNmRoVWN5RzZDWDREUjBXcFZfR3B5YjN1NHJOZEVlcnBMNzF4MGFHZl83bi1nQTJnaTg5SEtk?oc=5"
+        "published": "2026-10-29 07:31",
+        "link": "https://news.google.com/rss/articles/CBMi8wFBVV95cUxQVjM1U2ZwS3o0OXFfYlIxekgzMTNEb1NxS1lFbWpMZHVaVUY0TmhKRWVlZmprajdnVjJqNjZLbDZYbXp6aGJaTjVabW52RkNHajhHTlY0RHRYVkFTNDRfcTA5VzIyOEZQMUFMQ0MyWG1pSU5zWWlZb0k1SFpZOVR5dmtHZ2I1ejRFM1IzdEtMaVBGUUtXMlNTb09EODRwM2paX2JSYXl2YmNCdHB1alo2b25QUnFIUFJ2VlNIMHdVd0RXSDF2Z3VfdC1CM1hLWnMtS1VMMFlyLWtSYXItUjV1SkVHTjVobDVLc3ZEVWxHWUJMNG8?oc=5"
+      },
+      {
+        "title": "Can RZOLV (TSXV:RZL) Recover Silver From Old Solar Panels?",
+        "source": "Kalkine Media",
+        "published": "2026-10-27 18:05",
+        "link": "https://news.google.com/rss/articles/CBMiogFBVV95cUxOZkZzVTBGSmVINXFJOHJtcmxYZmZXZ0w1aFJoRFRFenZGcTNmNnZNSzk5b3psRGdLWEU4eDg5dTRfM2RtWmNqWUNKSC15UnlZWHV5NXRCNExOY1Baa3N6Ym8yem5pYmttb0diVWVfY1doWC0xUWhlQTNOUFZtaGlFR3psc3ZnbmRRWVk0MmpjTHoxQWhDaVBfbk9oNnRpMmhPbFE?oc=5"
       }
     ],
     "supply_mines": [
       {
-        "title": "Gold prices squeezed between rising oil and falling yields, Fresnillo silver output declines in 2026 \u2013 Heraeus",
-        "source": "Kitco",
-        "published": "2026-10-26 13:26",
-        "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNcVNMQnZQS3ZmcmtSNElycE9ZX21HblVQbGlDdTI3czFYaGcydnFqV0lmbG9sYTBxMzdXbFlmV01oVUg3alZxcE5UZl9lVVZUN25idXNPNGxWekZPenktaTNiR0xKVW5PT2djQVdsX3hMQUc4TWhhZEtqa0szQjU3aVNJaVVtV05JN1o3UmdkcWhoY2Z2bmdnVl9SY2NfaUxwakJhSDRtZkZVYWNkVV9UaFg4WktLVFItRllRM2NB?oc=5"
-      },
-      {
-        "title": "Solar Panel Recycling and Silver Recovery for Manufacturers",
-        "source": "https://www.mvapulse.com/",
-        "published": "2026-10-27 07:34",
-        "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOTGxVTHczTXp4NjlNR3ZGTXRFZkFNSnRCa0hXd2JWZEY3SHVZYnNmYVR2QU5SSEtidEdZV0lJMndLckVSU21HWVpSS1NTQkVCRElxZXh3OWlOMjBVTU1PYWdoQ05jNTQ4X2JBZ0UxeXREenVfTlNuTFpObElLWW9QLWJOMER6M1F6bUlyaXZB?oc=5"
-      },
-      {
         "title": "Solar\u2019s Silver Problem: Can Recycling Old Panels Ease Pressure on Manufacturers?",
         "source": "Saur Energy",
         "published": "2026-10-27 04:24",
         "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxNRVJYVUx0VVdKamNfVzRUMUxLSF9fcml0U2VuMnNMbHdkTmNacGFrN2xLdktEUU9GejR5Rk9ZUmNXbTVfdjdTOEtySGhlQ1c3V05EOWF3ZERMMklUX0NjWTZKcVcybzdhZGRPYUlueTlwcnM5LTI1UEhQSmNuU3lIeDBRUkhHcER2REtZcFhLVW5UTnlrMUhpODRKek93SVFRbnl1b0czdnp5NHRQT1A4b3d2ZkdjakstMUl0UXZxSG5IRFpkUDFIX09UUQ?oc=5"
+      },
+      {
+        "title": "Silver Is Falling Despite Lower Treasury Yields and a Persistent Supply Deficit",
+        "source": "Investing.com",
+        "published": "2026-10-30 20:41",
+        "link": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxONk1kY2R0ZkllN3NZY0ZlQkYxQVpXeHRkY21zaV9RUVlLbkhjVF9DM2FNeGVaMnkzU29mU0twOEs3a2tDRnQtRWx3QzJVdTJsMXlKdlBuZkpFaWROeUtwYU0tUkZ2by1jcGFKNEpTZGR1NmJOV0ZNRXRWNnJPbDRnZTB1VllaZ08wTjZxZ2RINXh1Qmg3cEhVTWFDN1p3emh1YXpWTVZJdmNKZzVEVkdvYnFBdkxDU19VbEJ3SXN3ZmZrZw?oc=5"
+      },
+      {
+        "title": "Silver Price Forecast: Supply Deficit vs Fed Pressure",
+        "source": "www.equiti.com",
+        "published": "2026-10-30 18:04",
+        "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxOUm82MG8ydGs2aVBCM1REQ25qeGhpUWYzUVA5U2pyWl9oZkxoSDFVakE5V0hjZVRsOXRmLXlFUnBUMVNNS1YwYzYxUDlXbFo4N3pMMlhGZksxZkRwRHN4SHYwejZ6a1NvTVBZYzE3b3RXdW1iUW5qa1BySDNUdlY1ZW1CSVNTOUNVOGFhWnFFbWtTelByV2dVN085elQ4MXdrWjJV?oc=5"
       }
     ],
     "flows_market": [
       {
-        "title": "Gold prices squeezed between rising oil and falling yields, Fresnillo silver output declines in 2026 \u2013 Heraeus",
-        "source": "Kitco",
-        "published": "2026-10-26 13:26",
-        "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNcVNMQnZQS3ZmcmtSNElycE9ZX21HblVQbGlDdTI3czFYaGcydnFqV0lmbG9sYTBxMzdXbFlmV01oVUg3alZxcE5UZl9lVVZUN25idXNPNGxWekZPenktaTNiR0xKVW5PT2djQVdsX3hMQUc4TWhhZEtqa0szQjU3aVNJaVVtV05JN1o3UmdkcWhoY2Z2bmdnVl9SY2NfaUxwakJhSDRtZkZVYWNkVV9UaFg4WktLVFItRllRM2NB?oc=5"
+        "title": "Silver/AUD (XAGAUD) Moved Sharply on Oct 30: Inventories, the Dollar, or Geopolitics?",
+        "source": "TradingKey",
+        "published": "2026-10-30 04:10",
+        "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNVmRzSkhscDBlQUd0MkhvYm5hV1A5YjEzRDBwRHprcm5yUU1meTdBbjNNbWZ4Mnk1RTNST1pPSU1GdUNjUzVMX1RKYTZwQWk0dzBFVlUzOFZGbVQyZlFIbTRfelJJVUdKa0JVbmMzWVhvUVNSVzVkWE4ySkVrMnhJcVU0OEVXa09udWhwYV9R?oc=5"
       },
       {
         "title": "Silver Falls, Gold Rallies as China Retail Investing Jumps, ETFs Sell",
